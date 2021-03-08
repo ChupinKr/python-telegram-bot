@@ -40,7 +40,7 @@ from telegram import TelegramError, Message, User, Chat, Update, Bot
 from telegram.error import Unauthorized, InvalidToken, TimedOut, RetryAfter
 from telegram.ext import Updater, Dispatcher, DictPersistence, Defaults
 from telegram.utils.deprecate import TelegramDeprecationWarning
-from telegram.utils.webhookhandler import WebhookServer
+from telegram.ext.utils.webhookhandler import WebhookServer
 
 signalskip = pytest.mark.skipif(
     sys.platform == 'win32',
@@ -111,6 +111,7 @@ class TestUpdater:
         self.err_handler_called.clear()
         self.err_handler_called.wait()
 
+    @pytest.mark.filterwarnings('ignore:.*:pytest.PytestUnhandledThreadExceptionWarning')
     def test_get_updates_bailout_err(self, monkeypatch, updater, caplog):
         error = InvalidToken()
 

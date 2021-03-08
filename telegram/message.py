@@ -55,9 +55,9 @@ from telegram.utils.helpers import (
     from_timestamp,
     to_timestamp,
     DEFAULT_NONE,
-    DefaultValue,
+    DEFAULT_20,
 )
-from telegram.utils.types import JSONDict, FileInput
+from telegram.utils.types import JSONDict, FileInput, ODVInput, DVInput
 
 if TYPE_CHECKING:
     from telegram import (
@@ -69,6 +69,7 @@ if TYPE_CHECKING:
         InputMediaDocument,
         InputMediaPhoto,
         InputMediaVideo,
+        LabeledPrice,
     )
 
 _UNDEFINED = object()
@@ -604,20 +605,20 @@ class Message(TelegramObject):
     def reply_text(
         self,
         text: str,
-        parse_mode: str = None,
-        disable_web_page_preview: bool = None,
-        disable_notification: bool = False,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
+        disable_web_page_preview: ODVInput[bool] = DEFAULT_NONE,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_message(update.message.chat_id, *args, **kwargs)
+            bot.send_message(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_message`.
 
@@ -649,20 +650,24 @@ class Message(TelegramObject):
     def reply_markdown(
         self,
         text: str,
-        disable_web_page_preview: bool = None,
-        disable_notification: bool = False,
+        disable_web_page_preview: ODVInput[bool] = DEFAULT_NONE,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_message(update.message.chat_id, parse_mode=ParseMode.MARKDOWN, *args,
-            **kwargs)
+            bot.send_message(
+                update.effective_message.chat_id,
+                parse_mode=ParseMode.MARKDOWN,
+                *args,
+                **kwargs,
+            )
 
         Sends a message with Markdown version 1 formatting.
 
@@ -699,20 +704,24 @@ class Message(TelegramObject):
     def reply_markdown_v2(
         self,
         text: str,
-        disable_web_page_preview: bool = None,
-        disable_notification: bool = False,
+        disable_web_page_preview: ODVInput[bool] = DEFAULT_NONE,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_message(update.message.chat_id, parse_mode=ParseMode.MARKDOWN_V2, *args,
-            **kwargs)
+            bot.send_message(
+                update.effective_message.chat_id,
+                parse_mode=ParseMode.MARKDOWN_V2,
+                *args,
+                **kwargs,
+            )
 
         Sends a message with markdown version 2 formatting.
 
@@ -745,19 +754,24 @@ class Message(TelegramObject):
     def reply_html(
         self,
         text: str,
-        disable_web_page_preview: bool = None,
-        disable_notification: bool = False,
+        disable_web_page_preview: ODVInput[bool] = DEFAULT_NONE,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_message(update.message.chat_id, parse_mode=ParseMode.HTML, *args, **kwargs)
+            bot.send_message(
+                update.effective_message.chat_id,
+                parse_mode=ParseMode.HTML,
+                *args,
+                **kwargs,
+            )
 
         Sends a message with HTML formatting.
 
@@ -792,16 +806,16 @@ class Message(TelegramObject):
         media: List[
             Union['InputMediaAudio', 'InputMediaDocument', 'InputMediaPhoto', 'InputMediaVideo']
         ],
-        disable_notification: bool = None,
+        disable_notification: ODVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
-        timeout: float = 20,
+        timeout: DVInput[float] = DEFAULT_20,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> List['Message']:
         """Shortcut for::
 
-            bot.send_media_group(update.message.chat_id, *args, **kwargs)
+            bot.send_media_group(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_media_group`.
 
@@ -815,7 +829,7 @@ class Message(TelegramObject):
             List[:class:`telegram.Message`]: An array of the sent Messages.
 
         Raises:
-            :class:`telegram.TelegramError`
+            :class:`telegram.error.TelegramError`
         """
         reply_to_message_id = self._quote(quote, reply_to_message_id)
         return self.bot.send_media_group(
@@ -832,20 +846,20 @@ class Message(TelegramObject):
         self,
         photo: Union[FileInput, 'PhotoSize'],
         caption: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
-        parse_mode: str = None,
+        timeout: DVInput[float] = DEFAULT_20,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_photo(update.message.chat_id, *args, **kwargs)
+            bot.send_photo(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_photo`.
 
@@ -882,21 +896,21 @@ class Message(TelegramObject):
         performer: str = None,
         title: str = None,
         caption: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
-        parse_mode: str = None,
+        timeout: DVInput[float] = DEFAULT_20,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         thumb: FileInput = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_audio(update.message.chat_id, *args, **kwargs)
+            bot.send_audio(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_audio`.
 
@@ -935,21 +949,21 @@ class Message(TelegramObject):
         document: Union[FileInput, 'Document'],
         filename: str = None,
         caption: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
-        parse_mode: str = None,
+        timeout: DVInput[float] = DEFAULT_20,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         thumb: FileInput = None,
         api_kwargs: JSONDict = None,
         disable_content_type_detection: bool = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_document(update.message.chat_id, *args, **kwargs)
+            bot.send_document(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_document`.
 
@@ -989,20 +1003,20 @@ class Message(TelegramObject):
         height: int = None,
         thumb: FileInput = None,
         caption: str = None,
-        parse_mode: str = None,
-        disable_notification: bool = False,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
+        timeout: DVInput[float] = DEFAULT_20,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_animation(update.message.chat_id, *args, **kwargs)
+            bot.send_animation(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_animation`.
 
@@ -1039,17 +1053,17 @@ class Message(TelegramObject):
     def reply_sticker(
         self,
         sticker: Union[FileInput, 'Sticker'],
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
+        timeout: DVInput[float] = DEFAULT_20,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_sticker(update.message.chat_id, *args, **kwargs)
+            bot.send_sticker(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_sticker`.
 
@@ -1080,24 +1094,24 @@ class Message(TelegramObject):
         video: Union[FileInput, 'Video'],
         duration: int = None,
         caption: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
+        timeout: DVInput[float] = DEFAULT_20,
         width: int = None,
         height: int = None,
-        parse_mode: str = None,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         supports_streaming: bool = None,
         thumb: FileInput = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_video(update.message.chat_id, *args, **kwargs)
+            bot.send_video(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_video`.
 
@@ -1137,19 +1151,19 @@ class Message(TelegramObject):
         video_note: Union[FileInput, 'VideoNote'],
         duration: int = None,
         length: int = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
+        timeout: DVInput[float] = DEFAULT_20,
         thumb: FileInput = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_video_note(update.message.chat_id, *args, **kwargs)
+            bot.send_video_note(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_video_note`.
 
@@ -1184,20 +1198,20 @@ class Message(TelegramObject):
         voice: Union[FileInput, 'Voice'],
         duration: int = None,
         caption: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = 20,
-        parse_mode: str = None,
+        timeout: DVInput[float] = DEFAULT_20,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         filename: str = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_voice(update.message.chat_id, *args, **kwargs)
+            bot.send_voice(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_voice`.
 
@@ -1232,22 +1246,22 @@ class Message(TelegramObject):
         self,
         latitude: float = None,
         longitude: float = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         location: Location = None,
         live_period: int = None,
         api_kwargs: JSONDict = None,
         horizontal_accuracy: float = None,
         heading: int = None,
         proximity_alert_radius: int = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_location(update.message.chat_id, *args, **kwargs)
+            bot.send_location(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_location`.
 
@@ -1286,21 +1300,21 @@ class Message(TelegramObject):
         title: str = None,
         address: str = None,
         foursquare_id: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         venue: Venue = None,
         foursquare_type: str = None,
         api_kwargs: JSONDict = None,
         google_place_id: str = None,
         google_place_type: str = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_venue(update.message.chat_id, *args, **kwargs)
+            bot.send_venue(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_venue`.
 
@@ -1339,19 +1353,19 @@ class Message(TelegramObject):
         phone_number: str = None,
         first_name: str = None,
         last_name: str = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         contact: Contact = None,
         vcard: str = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_contact(update.message.chat_id, *args, **kwargs)
+            bot.send_contact(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_contact`.
 
@@ -1390,22 +1404,22 @@ class Message(TelegramObject):
         allows_multiple_answers: bool = False,
         correct_option_id: int = None,
         is_closed: bool = None,
-        disable_notification: bool = None,
+        disable_notification: ODVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         explanation: str = None,
-        explanation_parse_mode: Union[str, DefaultValue, None] = DEFAULT_NONE,
+        explanation_parse_mode: ODVInput[str] = DEFAULT_NONE,
         open_period: int = None,
         close_date: Union[int, datetime.datetime] = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         explanation_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_poll(update.message.chat_id, *args, **kwargs)
+            bot.send_poll(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_poll`.
 
@@ -1444,18 +1458,18 @@ class Message(TelegramObject):
 
     def reply_dice(
         self,
-        disable_notification: bool = None,
+        disable_notification: ODVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         emoji: str = None,
         api_kwargs: JSONDict = None,
-        allow_sending_without_reply: bool = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
         quote: bool = None,
     ) -> 'Message':
         """Shortcut for::
 
-            bot.send_dice(update.message.chat_id, *args, **kwargs)
+            bot.send_dice(update.effective_message.chat_id, *args, **kwargs)
 
         For the documentation of the arguments, please see :meth:`telegram.Bot.send_dice`.
 
@@ -1481,18 +1495,161 @@ class Message(TelegramObject):
             allow_sending_without_reply=allow_sending_without_reply,
         )
 
+    def reply_chat_action(
+        self,
+        action: str,
+        timeout: ODVInput[float] = DEFAULT_NONE,
+        api_kwargs: JSONDict = None,
+    ) -> bool:
+        """Shortcut for::
+
+            bot.send_chat_action(update.effective_message.chat_id, *args, **kwargs)
+
+        For the documentation of the arguments, please see :meth:`telegram.Bot.send_chat_action`.
+
+        .. versionadded:: 13.2
+
+        Returns:
+            :obj:`bool`: On success, :obj:`True` is returned.
+
+        """
+        return self.bot.send_chat_action(
+            chat_id=self.chat_id,
+            action=action,
+            timeout=timeout,
+            api_kwargs=api_kwargs,
+        )
+
+    def reply_game(
+        self,
+        game_short_name: str,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
+        reply_to_message_id: Union[int, str] = None,
+        reply_markup: 'InlineKeyboardMarkup' = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
+        api_kwargs: JSONDict = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
+        quote: bool = None,
+    ) -> 'Message':
+        """Shortcut for::
+
+            bot.send_game(update.effective_message.chat_id, *args, **kwargs)
+
+        For the documentation of the arguments, please see :meth:`telegram.Bot.send_game`.
+
+        Args:
+            quote (:obj:`bool`, optional): If set to :obj:`True`, the game is sent as an actual
+                reply to this message. If ``reply_to_message_id`` is passed in ``kwargs``, this
+                parameter will be ignored. Default: :obj:`True` in group chats and :obj:`False`
+                in private chats.
+
+        .. versionadded:: 13.2
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        reply_to_message_id = self._quote(quote, reply_to_message_id)
+        return self.bot.send_game(
+            chat_id=self.chat_id,
+            game_short_name=game_short_name,
+            disable_notification=disable_notification,
+            reply_to_message_id=reply_to_message_id,
+            reply_markup=reply_markup,
+            timeout=timeout,
+            api_kwargs=api_kwargs,
+            allow_sending_without_reply=allow_sending_without_reply,
+        )
+
+    def reply_invoice(
+        self,
+        title: str,
+        description: str,
+        payload: str,
+        provider_token: str,
+        start_parameter: str,
+        currency: str,
+        prices: List['LabeledPrice'],
+        photo_url: str = None,
+        photo_size: int = None,
+        photo_width: int = None,
+        photo_height: int = None,
+        need_name: bool = None,
+        need_phone_number: bool = None,
+        need_email: bool = None,
+        need_shipping_address: bool = None,
+        is_flexible: bool = None,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
+        reply_to_message_id: Union[int, str] = None,
+        reply_markup: 'InlineKeyboardMarkup' = None,
+        provider_data: Union[str, object] = None,
+        send_phone_number_to_provider: bool = None,
+        send_email_to_provider: bool = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
+        api_kwargs: JSONDict = None,
+        allow_sending_without_reply: ODVInput[bool] = DEFAULT_NONE,
+        quote: bool = None,
+    ) -> 'Message':
+        """Shortcut for::
+
+            bot.send_invoice(update.effective_message.chat_id, *args, **kwargs)
+
+        For the documentation of the arguments, please see :meth:`telegram.Bot.send_invoice`.
+
+        Args:
+            quote (:obj:`bool`, optional): If set to :obj:`True`, the invoice is sent as an actual
+                reply to this message. If ``reply_to_message_id`` is passed in ``kwargs``, this
+                parameter will be ignored. Default: :obj:`True` in group chats and :obj:`False`
+                in private chats.
+
+        .. versionadded:: 13.2
+
+        Returns:
+            :class:`telegram.Message`: On success, instance representing the message posted.
+
+        """
+        reply_to_message_id = self._quote(quote, reply_to_message_id)
+        return self.bot.send_invoice(
+            chat_id=self.chat_id,
+            title=title,
+            description=description,
+            payload=payload,
+            provider_token=provider_token,
+            start_parameter=start_parameter,
+            currency=currency,
+            prices=prices,
+            photo_url=photo_url,
+            photo_size=photo_size,
+            photo_width=photo_width,
+            photo_height=photo_height,
+            need_name=need_name,
+            need_phone_number=need_phone_number,
+            need_email=need_email,
+            need_shipping_address=need_shipping_address,
+            is_flexible=is_flexible,
+            disable_notification=disable_notification,
+            reply_to_message_id=reply_to_message_id,
+            reply_markup=reply_markup,
+            provider_data=provider_data,
+            send_phone_number_to_provider=send_phone_number_to_provider,
+            send_email_to_provider=send_email_to_provider,
+            timeout=timeout,
+            api_kwargs=api_kwargs,
+            allow_sending_without_reply=allow_sending_without_reply,
+        )
+
     def forward(
         self,
         chat_id: Union[int, str],
-        disable_notification: bool = False,
-        timeout: float = None,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> 'Message':
         """Shortcut for::
 
             bot.forward_message(chat_id=chat_id,
-                                from_chat_id=update.message.chat_id,
-                                message_id=update.message.message_id,
+                                from_chat_id=update.effective_message.chat_id,
+                                message_id=update.effective_message.message_id,
                                 *args,
                                 **kwargs)
 
@@ -1515,20 +1672,20 @@ class Message(TelegramObject):
         self,
         chat_id: Union[int, str],
         caption: str = None,
-        parse_mode: str = None,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         caption_entities: Union[Tuple['MessageEntity', ...], List['MessageEntity']] = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
-        allow_sending_without_reply: bool = False,
+        allow_sending_without_reply: DVInput[bool] = DEFAULT_NONE,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> 'MessageId':
         """Shortcut for::
 
             bot.copy_message(chat_id=chat_id,
-                             from_chat_id=update.message.chat_id,
-                             message_id=update.message.message_id,
+                             from_chat_id=update.effective_message.chat_id,
+                             message_id=update.effective_message.message_id,
                              *args,
                              **kwargs)
 
@@ -1558,13 +1715,13 @@ class Message(TelegramObject):
         from_chat_id: Union[str, int],
         message_id: Union[str, int],
         caption: str = None,
-        parse_mode: str = None,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         caption_entities: Union[Tuple['MessageEntity', ...], List['MessageEntity']] = None,
-        disable_notification: bool = False,
+        disable_notification: DVInput[bool] = DEFAULT_NONE,
         reply_to_message_id: Union[int, str] = None,
-        allow_sending_without_reply: bool = False,
+        allow_sending_without_reply: DVInput[bool] = DEFAULT_NONE,
         reply_markup: ReplyMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
         quote: bool = None,
     ) -> 'MessageId':
@@ -1609,10 +1766,10 @@ class Message(TelegramObject):
     def edit_text(
         self,
         text: str,
-        parse_mode: str = None,
-        disable_web_page_preview: bool = None,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
+        disable_web_page_preview: ODVInput[bool] = DEFAULT_NONE,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
         entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
     ) -> Union['Message', bool]:
@@ -1652,8 +1809,8 @@ class Message(TelegramObject):
         self,
         caption: str = None,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
-        parse_mode: str = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
+        parse_mode: ODVInput[str] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
         caption_entities: Union[List['MessageEntity'], Tuple['MessageEntity', ...]] = None,
     ) -> Union['Message', bool]:
@@ -1693,7 +1850,7 @@ class Message(TelegramObject):
         self,
         media: 'InputMedia' = None,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> Union['Message', bool]:
         """Shortcut for::
@@ -1729,7 +1886,7 @@ class Message(TelegramObject):
     def edit_reply_markup(
         self,
         reply_markup: Optional['InlineKeyboardMarkup'] = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> Union['Message', bool]:
         """Shortcut for::
@@ -1766,7 +1923,7 @@ class Message(TelegramObject):
         longitude: float = None,
         location: Location = None,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
         horizontal_accuracy: float = None,
         heading: int = None,
@@ -1809,7 +1966,7 @@ class Message(TelegramObject):
     def stop_live_location(
         self,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> Union['Message', bool]:
         """Shortcut for::
@@ -1846,7 +2003,7 @@ class Message(TelegramObject):
         score: int,
         force: bool = None,
         disable_edit_message: bool = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> Union['Message', bool]:
         """Shortcut for::
@@ -1882,7 +2039,7 @@ class Message(TelegramObject):
     def get_game_high_scores(
         self,
         user_id: Union[int, str],
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> List['GameHighScore']:
         """Shortcut for::
@@ -1914,7 +2071,7 @@ class Message(TelegramObject):
 
     def delete(
         self,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> bool:
         """Shortcut for::
@@ -1940,7 +2097,7 @@ class Message(TelegramObject):
     def stop_poll(
         self,
         reply_markup: InlineKeyboardMarkup = None,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> Poll:
         """Shortcut for::
@@ -1967,8 +2124,8 @@ class Message(TelegramObject):
 
     def pin(
         self,
-        disable_notification: bool = None,
-        timeout: float = None,
+        disable_notification: ODVInput[bool] = DEFAULT_NONE,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> bool:
         """Shortcut for::
@@ -1994,7 +2151,7 @@ class Message(TelegramObject):
 
     def unpin(
         self,
-        timeout: float = None,
+        timeout: ODVInput[float] = DEFAULT_NONE,
         api_kwargs: JSONDict = None,
     ) -> bool:
         """Shortcut for::

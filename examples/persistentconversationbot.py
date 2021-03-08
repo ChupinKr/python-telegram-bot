@@ -122,7 +122,7 @@ def done(update: Update, context: CallbackContext) -> None:
         del context.user_data['choice']
 
     update.message.reply_text(
-        "I learned these facts about you:" f"{facts_to_str(context.user_data)}" "Until next time!"
+        "I learned these facts about you:" f"{facts_to_str(context.user_data)} Until next time!"
     )
     return ConversationHandler.END
 
@@ -130,7 +130,7 @@ def done(update: Update, context: CallbackContext) -> None:
 def main():
     # Create the Updater and pass it your bot's token.
     pp = PicklePersistence(filename='conversationbot')
-    updater = Updater("TOKEN", persistence=pp, use_context=True)
+    updater = Updater("TOKEN", persistence=pp)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher

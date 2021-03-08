@@ -3,11 +3,14 @@
 # type: ignore[union-attr]
 # This program is dedicated to the public domain under the CC0 license.
 
+#import gevent.monkey
+#import daemon
+from bs4 import BeautifulSoup
 import os
 os.getcwd()
 import sys
 sys.path.append('C:\\Users\\User\\Documents\\GitHub\\python-telegram-bot\\')
-
+import requests
 import logging
 import threading
 import queue
@@ -20,9 +23,6 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
 
 logger = logging.getLogger(__name__)
 vkIds = []
@@ -41,32 +41,53 @@ class Client:
     def __init__(self, chatId):
         self.chatId = chatId  # устанавливаем имя
         self.vkIds = []  # устанавливаем отслеживаемые id vk
-        self.avitoUsers = []  # устанавливаем отслеживаемые id avito
+        self.instUrls = []  # устанавливаем отслеживаемые inst акки
+
         self.queueVK = queue.Queue()
-        self.queueAvito = queue.Queue()
-        self.StatAvito = []
-        self.StatVk = []
+        self.queueInst = queue.Queue()
+
+        self.statInst = []
+        self.statVk = []
 
     def addVkId(self, vkId):
         self.vkIds.append(vkId)
 
-    def addAvitoUser(self, avitoUser):
-        self.avitoUsers.append(avitoUser)
+    def addInst(self, instUrl):
+        self.instUrls.append(instUrl)
 
-    def addStatAvito(self, userUrl):
-        self.StatAvito = StatAvito(userUrl)
+    def getClientInfo(self):
+        result = ""
+        if self.vkIds:
+            result += "Отслеживаемые вк: " + ", ".join(self.vkIds) + "\n"
+        if self.instUrls:
+            result += "Отслеживаемые инсты: " + ", ".join(self.instUrls) + "\n"
+        if not self.vkIds and not self.instUrls:
+            return "У вас нет отслеживаемых аккаунтов"
+        return result
+
+
+    def addStatInst(self, userUrl):
+        self.StatInst = StatInst(userUrl)
 
     #def addStatVk(self, userUrl):
     #    self.StatVk = StatVk(userUrl)
 
-class StatAvito:
+class StatInst:
     # конструктор
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
-        self.avitoAdsTimes = []  # список времен новых объявлений
+        self.instPostTimes = []  # список времен новых объявлений
+        self.instHistTimes = []  # список времен новых объявлений
+        self.instLastCountFollowers = -1  # список времен новых объявлений
+        self.instLastCountFollowing = -1  # список времен новых объявлений
 
-    def addAvitoAdTimes(self, adTime):
-        self.avitoAdsTimes.append(adTime)
+    def addInstLastPost(self, instPostTime):
+        self.instPostTimes.append(instPostTime)
+
+    def addInstLastHist(self, instHistTime):
+        self.instHistTimes.append(instHistTime)
+
+
 
 
 def checkClientExist(chatId):
@@ -82,16 +103,17 @@ def getClientNumber(chatId):
             return i
     return None
 
+def getHtml(url):
+    r = requests.get(url)
+    return r
+
+
+
+
+
 def checkVk(url):
     f = urllib.request.urlopen(url)
     return (json.load(f))
-
-def getHtmlAvitoUser(url):
-    f = urllib.request.urlopen(url)
-    mybytes = f.read()
-    mystr = mybytes.decode("utf8")
-    f.close()
-    return mystr
 
 def userIdCompress(userIds):
     result = ""
@@ -141,33 +163,6 @@ def checkOnlineVk(queueVK, update: Update):
             else:
                 update.message.reply_text("Пользователь " + vkIds[0] + " вышел из системы")
 
-def checkLastAd(queueAvito, update: Update, client: Client):
-    while True:
-        sleep(20)
-        try:
-            isCheck = queueAvito.get(timeout=1)
-            if isCheck == 0:
-                break
-        except:
-            pass
-        for avitoUser in client.avitoUsers:
-            html = getHtmlAvitoUser(avitoUser)
-            print(1)
-
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
-def start(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /start is issued."""
-    if (checkClientExist(update.message.chat_id)):
-        update.message.reply_text('Здравствуйте, мы вас помним, список доступных команд:')
-    else:
-        update.message.reply_text('Добро пожаловать, это сервис по поиску и слежке, список доступных команд:')
-
-
-
-
-
-
 def start_vk_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     if not vkIds:
@@ -178,9 +173,11 @@ def start_vk_command(update: Update, context: CallbackContext) -> None:
 
 def add_vk_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
+    checkClientExist(update.message.chat_id)
+    clientNum = getClientNumber(update.message.chat_id)
     if 'https://vk.com/' in update.message.text:
-        vkIds.append(update.message.text.split(" ")[1])
-        update.message.reply_text('Ссылка на юзера добавлена в список для отслеживания')
+        clients[clientNum].addVkId(update.message.text.split(" ")[1])
+        update.message.reply_text('Ссылка на пользователя добавлена в список для отслеживания')
 
 def stop_vk_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
@@ -194,40 +191,84 @@ def clear_vk_command(update: Update, context: CallbackContext) -> None:
 
 
 
-def add_avito_command(update: Update, context: CallbackContext) -> None:
+def getInfoInstAcc(instUrl):
+    data = {}
+    html = getHtml(instUrl)
+    soup = BeautifulSoup(html.text, "html.parser")
+    meta = soup.find("meta", property="og:description")
+    s = meta.attrs['content'].split("-")[0].split(" ")
+    data['Followers'] = s[0]
+    data['Following'] = s[2]
+    lastPhoto = html.content.split("shortcode\":\"")[1].split("\",\"dimensions")[0]
+    data['LastPhoto'] = lastPhoto
+    return data
+
+def getNumInstStatExist(accName, client):
+    for statNum in range(0, len(client.statInst)):
+        if accName == client.statInst[statNum].urlUser:
+            return statNum
+    client.addStatInst(accName)
+    return len(client.statInst) - 1
+
+def checkLastInstPost(queueInst, update: Update, client: Client):
+    while True:
+        sleep(1)
+        try:
+            isCheck = queueInst.get(timeout=1)
+            if isCheck == 0:
+                break
+        except:
+            pass
+        for instUrl in client.instUrls:
+            data = getInfoInstAcc(instUrl)
+            statNum = getNumInstStatExist(instUrl)
+            if(client.statInst[statNum].instLastCountFollowers == -1):
+                client.statInst[statNum].instLastCountFollowers = data.get('Followers')
+                client.statInst[statNum].instLastCountFollowings = data.get('Followings')
+                client.statInst[statNum].addInstLastPost(data.get('LastPhoto'))
+            sleep(10)
+        print(1)
+
+def add_inst_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
     checkClientExist(update.message.chat_id)
     clientNum = getClientNumber(update.message.chat_id)
-    if 'https://www.avito.ru/user/' in update.message.text:
-        clients[clientNum].addAvitoUser(update.message.text.split(" ")[1].split("&src")[0])
-        update.message.reply_text('Ссылка на юзера добавлена в список для отслеживания')
+    if 'https://www.instagram.com/' in update.message.text:
+        clients[clientNum].addInst(update.message.text.split(" ")[1])
+        update.message.reply_text('Ссылка на пользователя добавлена в список для отслеживания')
 
-
-def start_avito_command(update: Update, context: CallbackContext) -> None:
+def start_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     clientNum = getClientNumber(update.message.chat_id)
-    if not clients[clientNum].avitoUsers:
-        update.message.reply_text('Воспользуйтесь командой "/add_avito *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
+    if not clients[clientNum].instUrls:
+        update.message.reply_text('Воспользуйтесь командой "/add_inst *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
     else:
-        threading.Thread(target=checkLastAd, args=[clients[clientNum].queueAvito, update, clients[clientNum]]).start()
-        clients[clientNum].queueAvito.put(1)
+        threading.Thread(target=checkLastInstPost, args=[clients[clientNum].queueInst, update, clients[clientNum]]).start()
+        clients[clientNum].queueInst.put(1)
 
 
+
+# Define a few command handlers. These usually take the two arguments update and
+# context. Error handlers also receive the raised TelegramError object in error.
+def start(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /start is issued."""
+    if (checkClientExist(update.message.chat_id)):
+        update.message.reply_text('Здравствуйте, мы вас помним, список доступных команд:')
+    else:
+        update.message.reply_text('Добро пожаловать, это сервис по поиску и слежке, список доступных команд:')
 
 def help_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
     update.message.reply_text('Пока функция не активна')
 
-def show_command(update: Update, context: CallbackContext) -> None:
+def info_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
-    update.message.reply_text('Список отслеживаемых аккаунтов:\n')
-    update.message.reply_text(vkIds)
+    clientNum = getClientNumber(update.message.chat_id)
+    update.message.reply_text(clients[clientNum].getClientInfo())
 
-    
 def useCommands(update: Update, context: CallbackContext) -> None:
     """Echo the user message."""
     update.message.reply_text('Пожалуйста, воспользуйтесь командами')
-
 
 def main():
     """Start the bot."""
@@ -242,10 +283,10 @@ def main():
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
 
-    dispatcher.add_handler(CommandHandler("add_avito", add_avito_command))
-    dispatcher.add_handler(CommandHandler("start_avito", start_avito_command))
-    #dispatcher.add_handler(CommandHandler("stop_avito", stop_avito_command))
-    #dispatcher.add_handler(CommandHandler("clear_avito", clear_avito_command))
+    dispatcher.add_handler(CommandHandler("add_inst", add_inst_command))
+    dispatcher.add_handler(CommandHandler("start_inst", start_inst_command))
+    #dispatcher.add_handler(CommandHandler("stop_inst", stop_inst_command))
+    #dispatcher.add_handler(CommandHandler("clear_inst", clear_inst_command))
 
     dispatcher.add_handler(CommandHandler("start_vk", start_vk_command))
     dispatcher.add_handler(CommandHandler("add_vk", add_vk_command))
@@ -253,7 +294,7 @@ def main():
     dispatcher.add_handler(CommandHandler("clear_vk", clear_vk_command))
 
     dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CommandHandler("show", show_command))
+    dispatcher.add_handler(CommandHandler("info", info_command))
 
 
 
@@ -262,10 +303,6 @@ def main():
 
     # Start the Bot
     updater.start_polling()
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
 
     updater.idle()
 

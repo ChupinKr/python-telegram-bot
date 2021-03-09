@@ -6,6 +6,12 @@
 #import gevent.monkey
 #import daemon
 from bs4 import BeautifulSoup
+from instagrapi import Client as ClientInstApi
+from instagrapi import types as typesApi
+
+instApi = ClientInstApi()
+instApi.login("dmitry.di83", "testdima0001")
+
 import os
 os.getcwd()
 import sys
@@ -26,7 +32,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 
 logger = logging.getLogger(__name__)
 vkIds = []
-vkStatuses = []
 token='8f7b3067c107b5e658eb0b9c06ac2ba6c135a97e13ceb0a8af99650870fceb5efe365f3bba70e09545c93'
 checker = threading.Thread()
 clients = []
@@ -46,8 +51,8 @@ class Client:
         self.queueVK = queue.Queue()
         self.queueInst = queue.Queue()
 
-        self.statInst = []
-        self.statVk = []
+        self.statInsts = []
+        self.statVks = []
 
     def addVkId(self, vkId):
         self.vkIds.append(vkId)
@@ -67,7 +72,7 @@ class Client:
 
 
     def addStatInst(self, userUrl):
-        self.StatInst = StatInst(userUrl)
+        self.statInsts.append(StatInst(userUrl))
 
     #def addStatVk(self, userUrl):
     #    self.StatVk = StatVk(userUrl)
@@ -76,10 +81,12 @@ class StatInst:
     # конструктор
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
-        self.instPostTimes = []  # список времен новых объявлений
-        self.instHistTimes = []  # список времен новых объявлений
+        self.userId = instApi.user_id_from_username(urlUser.split("https://www.instagram.com/")[1].split("/")[0])  # устанавливаем имя
+        self.followers = self.getUserFollowers()  # список подписчиков
+        self.followings = instApi.user_followings(self.userId)  # список подписок
         self.instLastCountFollowers = -1  # список времен новых объявлений
         self.instLastCountFollowing = -1  # список времен новых объявлений
+        self.lastChanges = [10]
 
     def addInstLastPost(self, instPostTime):
         self.instPostTimes.append(instPostTime)
@@ -87,8 +94,17 @@ class StatInst:
     def addInstLastHist(self, instHistTime):
         self.instHistTimes.append(instHistTime)
 
+    def getUserFollowers(self):
+        followers = []
+        responce = instApi.user_followers(self.userId)
+        return responce
 
-
+class LastChangesInst:
+    # конструктор
+    def __init__(self, countFollowers, countFollowing, lastPhotoDate):
+        self.countFollowers = countFollowers
+        self.countFollowing = countFollowing
+        self.lastPhotoDate = lastPhotoDate
 
 def checkClientExist(chatId):
     for client in clients:
@@ -199,18 +215,31 @@ def getInfoInstAcc(instUrl):
     s = meta.attrs['content'].split("-")[0].split(" ")
     data['Followers'] = s[0]
     data['Following'] = s[2]
-    lastPhoto = html.content.split("shortcode\":\"")[1].split("\",\"dimensions")[0]
+    lastPhoto = html.content.decode("utf-8").split("shortcode\":\"")[1].split("\",\"dimensions")[0]
     data['LastPhoto'] = lastPhoto
+
+
+
+
     return data
 
 def getNumInstStatExist(accName, client):
-    for statNum in range(0, len(client.statInst)):
-        if accName == client.statInst[statNum].urlUser:
+    for statNum in range(0, len(client.statInsts)):
+        if accName == client.statInsts[statNum].urlUser:
             return statNum
     client.addStatInst(accName)
-    return len(client.statInst) - 1
+    return len(client.statInsts) - 1
 
-def checkLastInstPost(queueInst, update: Update, client: Client):
+
+#def updateStatInst(accName, update: Update, client, data, statNum):
+
+
+def addNewStatInst(client, data, statNum):
+    client.statInsts[statNum].instLastCountFollowers = data.get('Followers')
+    client.statInsts[statNum].instLastCountFollowings = data.get('Followings')
+    client.statInsts[statNum].addInstLastPost(data.get('LastPhoto'))
+
+def checkLastInstInfo(queueInst, update: Update, client: Client):
     while True:
         sleep(1)
         try:
@@ -220,22 +249,34 @@ def checkLastInstPost(queueInst, update: Update, client: Client):
         except:
             pass
         for instUrl in client.instUrls:
-            data = getInfoInstAcc(instUrl)
-            statNum = getNumInstStatExist(instUrl)
-            if(client.statInst[statNum].instLastCountFollowers == -1):
-                client.statInst[statNum].instLastCountFollowers = data.get('Followers')
-                client.statInst[statNum].instLastCountFollowings = data.get('Followings')
-                client.statInst[statNum].addInstLastPost(data.get('LastPhoto'))
             sleep(10)
+            data = getInfoInstAcc(instUrl)
+            statNum = getNumInstStatExist(instUrl, client)
+            #если новый отслеживаемый акк
+            if(client.statInsts[statNum].instLastCountFollowers == -1):
+                client.statInsts[statNum].instLastCountFollowers = data.get('Followers')
+                client.statInsts[statNum].instLastCountFollowings = data.get('Followings')
+                client.statInsts[statNum].addInstLastPost(data.get('LastPhoto'))
+            # если уже есть история отслеживания
+            #else:
+
         print(1)
 
 def add_inst_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
     checkClientExist(update.message.chat_id)
     clientNum = getClientNumber(update.message.chat_id)
+
     if 'https://www.instagram.com/' in update.message.text:
-        clients[clientNum].addInst(update.message.text.split(" ")[1])
-        update.message.reply_text('Ссылка на пользователя добавлена в список для отслеживания')
+        instUrl = update.message.text.split(" ")[1]
+        if update.message.text.split(" ")[1] in clients[clientNum].instUrls:
+            clients[clientNum].addInst(instUrl)
+            update.message.reply_text('Ссылка на пользователя добавлена в список отслеживаемых')
+        else:
+            update.message.reply_text('В списке отслеживаемых уже есть данный пользователь')
+    else:
+        update.message.reply_text('Не могу понять. \nОтправьте полную ссылку на страницу пользователя в формате https://www.instagram.com/*ник пользователя*')
+
 
 def start_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
@@ -243,7 +284,7 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
     if not clients[clientNum].instUrls:
         update.message.reply_text('Воспользуйтесь командой "/add_inst *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
     else:
-        threading.Thread(target=checkLastInstPost, args=[clients[clientNum].queueInst, update, clients[clientNum]]).start()
+        threading.Thread(target=checkLastInstInfo, args=[clients[clientNum].queueInst, update, clients[clientNum]]).start()
         clients[clientNum].queueInst.put(1)
 
 
@@ -309,4 +350,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    followers = []
+    responce = instApi.user_followers("15434397953")
+    for follower in responce:
+        followers.append(follower)
+    print(responce)
+
+    #main()

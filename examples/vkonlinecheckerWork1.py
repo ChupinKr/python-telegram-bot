@@ -82,29 +82,45 @@ class StatInst:
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
         self.userId = instApi.user_id_from_username(urlUser.split("https://www.instagram.com/")[1].split("/")[0])  # устанавливаем имя
-        self.followers = self.getUserFollowers()  # список подписчиков
-        self.followings = instApi.user_followings(self.userId)  # список подписок
-        self.instLastCountFollowers = -1  # список времен новых объявлений
-        self.instLastCountFollowing = -1  # список времен новых объявлений
-        self.lastChanges = [10]
+        self.followersIds = self.getUserFollowersIds()  # список подписчиков
+        self.followingsIds = self.getUserFollowersIds() # список подписок
+        self.instLastPost = self.getInstLastPost()
+        self.instLastHist = self.getInstLastHist()
+        self.lastChanges = LastChangesInst()
 
-    def addInstLastPost(self, instPostTime):
-        self.instPostTimes.append(instPostTime)
 
-    def addInstLastHist(self, instHistTime):
-        self.instHistTimes.append(instHistTime)
+    def getInstLastPost(self, instPost):
+        self.instLastPost.append(instPost)
 
-    def getUserFollowers(self):
+    def getInstLastHist(self, instHist):
+        self.instLastHist.append(instHist)
+
+    def getUserFollowersIds(self):
         followers = []
-        responce = instApi.user_followers(self.userId)
-        return responce
+        responce = instApi.user_followers("15434397953")
+        for follower in responce:
+            followers.append(follower)
+        return followers
+
+    def getUserFollowingsIds(self):
+        followers = []
+        responce = instApi.user_followings("15434397953")
+        for follower in responce:
+            followers.append(follower)
+        return followers
 
 class LastChangesInst:
     # конструктор
-    def __init__(self, countFollowers, countFollowing, lastPhotoDate):
-        self.countFollowers = countFollowers
-        self.countFollowing = countFollowing
-        self.lastPhotoDate = lastPhotoDate
+    def __init__(self, instId):
+        self.lastFollowers = []
+        self.lastUnfollowers = []
+        self.lastFollowing = []
+        self.lastFollowing = []
+        self.lastPhotoDate = []
+        self.lastStoryDate = []
+
+    def getNewFollowers(self, instId):
+        responce = instApi.user_followers(instId)
 
 def checkClientExist(chatId):
     for client in clients:
@@ -217,10 +233,6 @@ def getInfoInstAcc(instUrl):
     data['Following'] = s[2]
     lastPhoto = html.content.decode("utf-8").split("shortcode\":\"")[1].split("\",\"dimensions")[0]
     data['LastPhoto'] = lastPhoto
-
-
-
-
     return data
 
 def getNumInstStatExist(accName, client):
@@ -350,10 +362,9 @@ def main():
 
 
 if __name__ == '__main__':
-    followers = []
-    responce = instApi.user_followers("15434397953")
-    for follower in responce:
-        followers.append(follower)
-    print(responce)
+    list1 = [u'Вася', u'Петя', u'Маша', u'Саша']
+    list2 = [u'Вася', u'Петя']
+    list3 = list(set(list1) - set(list2))
+    print(list3)
 
     #main()

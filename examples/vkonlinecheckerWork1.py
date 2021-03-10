@@ -8,6 +8,7 @@
 from bs4 import BeautifulSoup
 from instagrapi import Client as ClientInstApi
 from instagrapi import types as typesApi
+from datetime import datetime
 
 instApi = ClientInstApi()
 instApi.login("dmitry.di83", "testdima0001")
@@ -82,45 +83,122 @@ class StatInst:
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
         self.userId = instApi.user_id_from_username(urlUser.split("https://www.instagram.com/")[1].split("/")[0])  # устанавливаем имя
-        self.followersIds = self.getUserFollowersIds()  # список подписчиков
-        self.followingsIds = self.getUserFollowersIds() # список подписок
-        self.instLastPost = self.getInstLastPost()
-        self.instLastHist = self.getInstLastHist()
-        self.lastChanges = LastChangesInst()
+        self.followersIds = instApi.user_followers(self.userId)  # список подписчиков
+        self.followingsIds = instApi.user_following(self.userId)# список подписок
+        self.instLastPost = self.tryGetLastPost()
+        self.instLastHist = self.tryGetLastHist()
+        self.lastChanges = self.LastChangesInst(self)
 
+    def tryGetLastPost(self):
+        resp = instApi.user_medias(self.userId,1)
+        if len(resp) > 0:
+            return resp[0]
+        return []
 
-    def getInstLastPost(self, instPost):
+    def tryGetLastHist(self):
+        resp = instApi.user_stories(self.userId)
+        if len(resp) > 0:
+            return resp[len(instApi.user_stories(self.userId)) - 1]
+        return []
+
+    def getUserId(self):
+        return self.userId
+
+    def getFollowersIds(self):
+        return self.followersIds
+
+    def getFollowingsIds(self):
+        return self.followingsIds
+
+    def getInstLastPost(self):
+        return self.instLastPost
+
+    def getInstLastHist(self):
+        return self.instLastHist
+
+    def setFollowersIds(self, followersIds):
+        self.followersIds = followersIds
+
+    def setFollowingsIds(self, followingsIds):
+        self.followingsIds = followingsIds
+
+    def setInstLastPostId(self, instPost):
         self.instLastPost.append(instPost)
 
-    def getInstLastHist(self, instHist):
+    def setInstLastHistId(self, instHist):
         self.instLastHist.append(instHist)
 
-    def getUserFollowersIds(self):
-        followers = []
-        responce = instApi.user_followers("15434397953")
-        for follower in responce:
-            followers.append(follower)
-        return followers
 
-    def getUserFollowingsIds(self):
-        followers = []
-        responce = instApi.user_followings("15434397953")
-        for follower in responce:
-            followers.append(follower)
-        return followers
+    class LastChangesInst:
+        # конструктор
+        def __init__(self, parent):
+            self.parent = parent
+            self.lastFollowers = []
+            self.lastUnfollowers = []
+            self.lastFollowings = []
+            self.lasUnfollowings = []
+            self.lastPhotoDate = []
+            self.lastStoryDate = []
 
-class LastChangesInst:
-    # конструктор
-    def __init__(self, instId):
-        self.lastFollowers = []
-        self.lastUnfollowers = []
-        self.lastFollowing = []
-        self.lastFollowing = []
-        self.lastPhotoDate = []
-        self.lastStoryDate = []
+        def setNewFollowers(self):
+            responce = instApi.user_followers(self.parent.getUserId())
+            oldIds = self.parent.getFollowersIds()
+            if list(set(responce) - set(oldIds)) != []:
+                self.lastFollowers.append(list(set(responce) - set(oldIds)))
+                self.parent.setFollowersIds(responce)
+                listNewFollowersNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
+                return self.parent.urlUser + " подписался на: \n" + '\n'.join(listNewFollowersNicks)
 
-    def getNewFollowers(self, instId):
-        responce = instApi.user_followers(instId)
+        def setNewUnfollowers(self):
+            responce = instApi.user_followers(self.parent.getUserId())
+            oldIds = self.parent.getFollowersIds()
+            if list(set(oldIds) - set(responce)) != []:
+                self.lastUnfollowers.append(list(set(oldIds) - set(responce)))
+                self.parent.setFollowersIds(responce)
+                listNewUnfollowersNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
+                return self.parent.urlUser + " отписался от: \n" + '\n'.join(listNewUnfollowersNicks)
+
+
+        def setNewFollowings(self):
+            responce = instApi.user_following(self.parent.getUserId())
+            oldIds = self.parent.getFollowingsIds()
+            if list(set(responce) - set(oldIds)) != []:
+                self.lastFollowings.append(list(set(responce) - set(oldIds)))
+                self.parent.setFollowingsIds(responce)
+                listNewFollowingsNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
+                return "На " + self.parent.urlUser + " подписались: \n" + '\n'.join(listNewFollowingsNicks)
+
+        def setNewUnfollowings(self):
+            responce = instApi.user_following(self.parent.getUserId())
+            oldIds = self.parent.getFollowingsIds()
+            if list(set(oldIds) - set(responce)) != []:
+                self.lasUnfollowings.append(list(set(oldIds) - set(responce)))
+                self.parent.setFollowingsIds(responce)
+                listNewUnfollowingsNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
+                return "От " + self.parent.urlUser + " отписались: \n" + '\n'.join(listNewUnfollowingsNicks)
+
+        def setNewLastPost(self):
+            responce = self.parent.tryGetLastPost()
+            oldLastPost = self.parent.getInstLastPost()
+            if responce != oldLastPost:
+                self.lastPhotoDate.append({"post" : responce, "time": datetime.now() - (2 * datetime.hour)})
+                self.parent.setInstLastPostId(responce)
+                return "Пользователь " + self.parent.urlUser + " добавил пост: \n" + "https://www.instagram.com/p/" + responce
+
+        def setNewLastHistory(self):
+            responce = self.parent.tryGetLastHist()
+            oldLastPost = self.parent.getInstLastHist()
+            if responce != oldLastPost:
+                self.lastStoryDate.append({"post": responce, "time": datetime.now() - (2 * datetime.hour)})
+                self.parent.setInstLastPostId(responce)
+                return "Пользователь " + self.parent.urlUser + " добавил новую историю: \n"
+
+        def listUserIdsToUrls(self, listIds):
+            listResult = []
+            for userID in listIds:
+                listResult.append("https://www.instagram.com/" + instApi.username_from_user_id(userID))
+            return listResult
+
 
 def checkClientExist(chatId):
     for client in clients:
@@ -223,18 +301,7 @@ def clear_vk_command(update: Update, context: CallbackContext) -> None:
 
 
 
-def getInfoInstAcc(instUrl):
-    data = {}
-    html = getHtml(instUrl)
-    soup = BeautifulSoup(html.text, "html.parser")
-    meta = soup.find("meta", property="og:description")
-    s = meta.attrs['content'].split("-")[0].split(" ")
-    data['Followers'] = s[0]
-    data['Following'] = s[2]
-    lastPhoto = html.content.decode("utf-8").split("shortcode\":\"")[1].split("\",\"dimensions")[0]
-    data['LastPhoto'] = lastPhoto
-    return data
-
+#обавление статистики за конкретным отслеживаемым юзером и получение его номера у клиента
 def getNumInstStatExist(accName, client):
     for statNum in range(0, len(client.statInsts)):
         if accName == client.statInsts[statNum].urlUser:
@@ -246,10 +313,6 @@ def getNumInstStatExist(accName, client):
 #def updateStatInst(accName, update: Update, client, data, statNum):
 
 
-def addNewStatInst(client, data, statNum):
-    client.statInsts[statNum].instLastCountFollowers = data.get('Followers')
-    client.statInsts[statNum].instLastCountFollowings = data.get('Followings')
-    client.statInsts[statNum].addInstLastPost(data.get('LastPhoto'))
 
 def checkLastInstInfo(queueInst, update: Update, client: Client):
     while True:
@@ -260,19 +323,21 @@ def checkLastInstInfo(queueInst, update: Update, client: Client):
                 break
         except:
             pass
+        #для каждого отслеживаемого акка проверяем
         for instUrl in client.instUrls:
-            sleep(10)
-            data = getInfoInstAcc(instUrl)
+            #созаем/получаем номер статистики для этого отслеживаемого акка
             statNum = getNumInstStatExist(instUrl, client)
-            #если новый отслеживаемый акк
-            if(client.statInsts[statNum].instLastCountFollowers == -1):
-                client.statInsts[statNum].instLastCountFollowers = data.get('Followers')
-                client.statInsts[statNum].instLastCountFollowings = data.get('Followings')
-                client.statInsts[statNum].addInstLastPost(data.get('LastPhoto'))
-            # если уже есть история отслеживания
-            #else:
+            #обновляем данные изменений по каждому аккаунту
+            renewalStat(update, statNum, client)
+            sleep(20)
 
-        print(1)
+def renewalStat(update: Update, statNum, client):
+    print(client.statInsts[statNum].lastChanges.setNewFollowers())
+    print(client.statInsts[statNum].lastChanges.setNewUnfollowers())
+    print(client.statInsts[statNum].lastChanges.setNewFollowings())
+    print(client.statInsts[statNum].lastChanges.setNewUnfollowings())
+    print(client.statInsts[statNum].lastChanges.setNewLastPost())
+    print(client.statInsts[statNum].lastChanges.setNewLastHistory())
 
 def add_inst_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
@@ -281,7 +346,7 @@ def add_inst_command(update: Update, context: CallbackContext) -> None:
 
     if 'https://www.instagram.com/' in update.message.text:
         instUrl = update.message.text.split(" ")[1]
-        if update.message.text.split(" ")[1] in clients[clientNum].instUrls:
+        if update.message.text.split(" ")[1] not in clients[clientNum].instUrls:
             clients[clientNum].addInst(instUrl)
             update.message.reply_text('Ссылка на пользователя добавлена в список отслеживаемых')
         else:
@@ -296,6 +361,7 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
     if not clients[clientNum].instUrls:
         update.message.reply_text('Воспользуйтесь командой "/add_inst *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
     else:
+        update.message.reply_text('Запущено отслеживание выбранных аккаунтов, ожидаем изменений...')
         threading.Thread(target=checkLastInstInfo, args=[clients[clientNum].queueInst, update, clients[clientNum]]).start()
         clients[clientNum].queueInst.put(1)
 
@@ -362,9 +428,4 @@ def main():
 
 
 if __name__ == '__main__':
-    list1 = [u'Вася', u'Петя', u'Маша', u'Саша']
-    list2 = [u'Вася', u'Петя']
-    list3 = list(set(list1) - set(list2))
-    print(list3)
-
-    #main()
+    main()

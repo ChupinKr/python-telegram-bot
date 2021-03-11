@@ -85,7 +85,7 @@ class StatInst:
     # конструктор
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
-        self.userId = instApi.user_id_from_username(urlUser.split("https://www.instagram.com/")[1].split("/")[0])  # устанавливаем имя
+        self.userId = instApi.user_id_from_username(urlUser.split("instagram.com/")[1].split("/")[0])  # устанавливаем имя
         self.followersIds = instApi.user_followers(self.userId)  # список подписчиков
         self.followingsIds = instApi.user_following(self.userId)# список подписок
         self.instLastPost = self.tryGetLastPost()
@@ -360,7 +360,7 @@ def add_inst_command(update: Update, context: CallbackContext) -> None:
     checkClientExist(update.message.chat_id)
     clientNum = getClientNumber(update.message.chat_id)
 
-    if 'https://www.instagram.com/' in update.message.text:
+    if 'instagram.com/' in update.message.text:
         instUrl = update.message.text.split(" ")[1]
         if update.message.text.split(" ")[1] not in clients[clientNum].instUrls:
             clients[clientNum].addInst(instUrl)

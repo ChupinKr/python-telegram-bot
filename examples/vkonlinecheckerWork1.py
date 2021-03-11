@@ -5,6 +5,7 @@
 
 #import gevent.monkey
 #import daemon
+import pytz
 from bs4 import BeautifulSoup
 from instagrapi import Client as ClientInstApi
 from instagrapi import types as typesApi
@@ -12,6 +13,7 @@ from datetime import datetime
 
 instApi = ClientInstApi()
 instApi.login("dmitry.di83", "testdima0001")
+
 
 import os
 os.getcwd()
@@ -25,6 +27,7 @@ import urllib.request
 import json
 
 from time import sleep
+#import telebot
 
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
@@ -92,13 +95,13 @@ class StatInst:
     def tryGetLastPost(self):
         resp = instApi.user_medias(self.userId,1)
         if len(resp) > 0:
-            return resp[0]
+            return resp[0].code
         return []
 
     def tryGetLastHist(self):
         resp = instApi.user_stories(self.userId)
         if len(resp) > 0:
-            return resp[len(instApi.user_stories(self.userId)) - 1]
+            return resp[len(instApi.user_stories(self.userId)) - 1].code
         return []
 
     def getUserId(self):
@@ -141,56 +144,56 @@ class StatInst:
             self.lastStoryDate = []
 
         def setNewFollowers(self):
-            responce = instApi.user_followers(self.parent.getUserId())
+            responce = instApi.user_followers(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowersIds()
             if list(set(responce) - set(oldIds)) != []:
                 self.lastFollowers.append(list(set(responce) - set(oldIds)))
                 self.parent.setFollowersIds(responce)
                 listNewFollowersNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
-                return self.parent.urlUser + " подписался на: \n" + '\n'.join(listNewFollowersNicks)
+                return "На " + self.parent.urlUser + " подписались: \n" + '\n'.join(listNewFollowersNicks)
 
         def setNewUnfollowers(self):
-            responce = instApi.user_followers(self.parent.getUserId())
+            responce = instApi.user_followers(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowersIds()
             if list(set(oldIds) - set(responce)) != []:
                 self.lastUnfollowers.append(list(set(oldIds) - set(responce)))
                 self.parent.setFollowersIds(responce)
                 listNewUnfollowersNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
-                return self.parent.urlUser + " отписался от: \n" + '\n'.join(listNewUnfollowersNicks)
+                return "От " + self.parent.urlUser + " отписались: \n" + '\n'.join(listNewUnfollowersNicks)
 
 
         def setNewFollowings(self):
-            responce = instApi.user_following(self.parent.getUserId())
+            responce = instApi.user_following(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowingsIds()
             if list(set(responce) - set(oldIds)) != []:
                 self.lastFollowings.append(list(set(responce) - set(oldIds)))
                 self.parent.setFollowingsIds(responce)
                 listNewFollowingsNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
-                return "На " + self.parent.urlUser + " подписались: \n" + '\n'.join(listNewFollowingsNicks)
+                return self.parent.urlUser + " подписался на: \n" + '\n'.join(listNewFollowingsNicks)
 
         def setNewUnfollowings(self):
-            responce = instApi.user_following(self.parent.getUserId())
+            responce = instApi.user_following(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowingsIds()
             if list(set(oldIds) - set(responce)) != []:
                 self.lasUnfollowings.append(list(set(oldIds) - set(responce)))
                 self.parent.setFollowingsIds(responce)
                 listNewUnfollowingsNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
-                return "От " + self.parent.urlUser + " отписались: \n" + '\n'.join(listNewUnfollowingsNicks)
+                return self.parent.urlUser + " отписался от : \n" + '\n'.join(listNewUnfollowingsNicks)
 
         def setNewLastPost(self):
             responce = self.parent.tryGetLastPost()
             oldLastPost = self.parent.getInstLastPost()
             if responce != oldLastPost:
-                self.lastPhotoDate.append({"post" : responce, "time": datetime.now() - (2 * datetime.hour)})
-                self.parent.setInstLastPostId(responce)
+                self.lastPhotoDate.append({"post" : responce.code, "time": responce.taken_at})
+                self.parent.setInstLastPostId(responce.code)
                 return "Пользователь " + self.parent.urlUser + " добавил пост: \n" + "https://www.instagram.com/p/" + responce
 
         def setNewLastHistory(self):
             responce = self.parent.tryGetLastHist()
             oldLastPost = self.parent.getInstLastHist()
             if responce != oldLastPost:
-                self.lastStoryDate.append({"post": responce, "time": datetime.now() - (2 * datetime.hour)})
-                self.parent.setInstLastPostId(responce)
+                self.lastStoryDate.append({"post": responce.code, "time": responce.taken_at})
+                self.parent.setInstLastPostId(responce.code)
                 return "Пользователь " + self.parent.urlUser + " добавил новую историю: \n"
 
         def listUserIdsToUrls(self, listIds):
@@ -332,12 +335,25 @@ def checkLastInstInfo(queueInst, update: Update, client: Client):
             sleep(20)
 
 def renewalStat(update: Update, statNum, client):
-    print(client.statInsts[statNum].lastChanges.setNewFollowers())
-    print(client.statInsts[statNum].lastChanges.setNewUnfollowers())
-    print(client.statInsts[statNum].lastChanges.setNewFollowings())
-    print(client.statInsts[statNum].lastChanges.setNewUnfollowings())
-    print(client.statInsts[statNum].lastChanges.setNewLastPost())
-    print(client.statInsts[statNum].lastChanges.setNewLastHistory())
+    output = ""
+    output = client.statInsts[statNum].lastChanges.setNewFollowers()
+    if output != None:
+        update.message.reply_text(output)
+    output = client.statInsts[statNum].lastChanges.setNewUnfollowers()
+    if output != None:
+        update.message.reply_text(output)
+    output = client.statInsts[statNum].lastChanges.setNewFollowings()
+    if output != None:
+        update.message.reply_text(output)
+    output = client.statInsts[statNum].lastChanges.setNewUnfollowings()
+    if output != None:
+        update.message.reply_text(output)
+    output = client.statInsts[statNum].lastChanges.setNewLastPost()
+    if output != None:
+        update.message.reply_text(output)
+    output = client.statInsts[statNum].lastChanges.setNewLastHistory()
+    if output != None:
+        update.message.reply_text(output)
 
 def add_inst_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
@@ -364,6 +380,22 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
         update.message.reply_text('Запущено отслеживание выбранных аккаунтов, ожидаем изменений...')
         threading.Thread(target=checkLastInstInfo, args=[clients[clientNum].queueInst, update, clients[clientNum]]).start()
         clients[clientNum].queueInst.put(1)
+
+def stop_inst_command(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /start is issued."""
+    clientNum = getClientNumber(update.message.chat_id)
+    update.message.reply_text('Отслеживание остановлено')
+    clients[clientNum].queueInst.put(0)
+
+def clear_inst_command(update: Update, context: CallbackContext) -> None:
+    """Send a message when the command /start is issued."""
+    clientNum = getClientNumber(update.message.chat_id)
+    clients[clientNum].instUrls = []
+    update.message.reply_text('Список отслеживаемых очищен')
+    clients[clientNum].queueInst.put(0)
+
+
+
 
 
 
@@ -404,8 +436,8 @@ def main():
 
     dispatcher.add_handler(CommandHandler("add_inst", add_inst_command))
     dispatcher.add_handler(CommandHandler("start_inst", start_inst_command))
-    #dispatcher.add_handler(CommandHandler("stop_inst", stop_inst_command))
-    #dispatcher.add_handler(CommandHandler("clear_inst", clear_inst_command))
+    dispatcher.add_handler(CommandHandler("stop_inst", stop_inst_command))
+    dispatcher.add_handler(CommandHandler("clear_inst", clear_inst_command))
 
     dispatcher.add_handler(CommandHandler("start_vk", start_vk_command))
     dispatcher.add_handler(CommandHandler("add_vk", add_vk_command))

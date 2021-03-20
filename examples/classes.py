@@ -1,4 +1,5 @@
 import queue
+import requests
 from instagrapi import Client as ClientInstApi
 from instagrapi import types as typesApi
 from datetime import datetime
@@ -7,6 +8,17 @@ instApi = ClientInstApi()
 instApi.login("dmitry.di83", "testdima0001")
 
 clients = []
+
+
+def getClientNumber(chatId):
+    for i in range(0, len(clients)):
+        if chatId == clients[i].chatId:
+            return i
+    return None
+
+def getHtml(url):
+    r = requests.get(url)
+    return r
 
 class Client:
     # конструктор

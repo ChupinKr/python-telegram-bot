@@ -105,6 +105,20 @@ def getAccountsVk(client):
 
 
 
+def tracking_inst_menu(update,context):
+    cls.checkClientExist(update.callback_query.message.chat_id)
+    client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
+    isVk = "vk.com" in client.getLastMess()
+
+    client.vkIds.append(client.getLastMess()) if isVk else client.instUrls.append(client.getLastMess())
+
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(
+        text=tracking_inst_menu_message(client, 0),
+        reply_markup=tracking_inst_menu_keyboard()
+    )
+
 
 def start(update, context):
   update.message.reply_text(main_menu_message(),
@@ -180,12 +194,7 @@ def tracking_vk_start_menu(update,context):
                         text=tracking_vk_start_menu_message(),
                         reply_markup=tracking_vk_start_menu_keyboard())
 
-def tracking_inst_menu(update,context):
-  query = update.callback_query
-  query.answer()
-  query.edit_message_text(
-                        text=tracking_inst_menu_message(),
-                        reply_markup=tracking_inst_menu_keyboard())
+
 
 def tracking_inst_add_menu(update,context):
   query = update.callback_query
@@ -360,26 +369,26 @@ def analysis_start_keyboard():
   return InlineKeyboardMarkup(keyboard)
 
 def tracking_vk_start_keyboard():
-  keyboard = [[InlineKeyboardButton('Начать отслеживане', callback_data='start_vk')],
+  keyboard = [[InlineKeyboardButton('Начать отслеживане', callback_data='startVk')],
               [InlineKeyboardButton('<- Назад', callback_data='vkTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_start_keyboard():
-  keyboard = [[InlineKeyboardButton('Начать отслеживане', callback_data='start_inst')],
+  keyboard = [[InlineKeyboardButton('Начать отслеживане', callback_data='startInst')],
               [InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
 ############################# Messages #########################################
 def main_menu_message():
     result = '*Название бота* - бот-детектив\n\n'
-    result +='Найти поклонников, отследить активность пользователя, а также анализировать последнии действия друзей/подписчиков.\n'
-    result +='Все в ваших руках.\n'
-    result +='Бот отсведомляет и хранит информацию об изменениях в профилях отслеживаемых пользователей.\n\n'
-    result +='Плюсом будет являться ваша анонимность)\n\n'
-    result +='Пошарьте меню, может вам интересно, кто лайкает вашу половинку или друга...'
+    result += 'Найти поклонников, отследить активность пользователя, а также анализировать последнии действия друзей/подписчиков.\n'
+    result += 'Все в ваших руках.\n'
+    result += 'Бот отсведомляет и хранит информацию об изменениях в профилях отслеживаемых пользователей.\n\n'
+    result += 'Плюсом будет являться ваша анонимность)\n\n'
+    result += 'Пошарьте меню, может вам интересно, кто лайкает вашу половинку или друга...'
     return result
 
-def profile_menu_message():
+  def profile_menu_message():
   return 'Инфа о профиле...'
 
 def buySubscription_menu_message():
@@ -391,8 +400,11 @@ def tracking_menu_message():
 def tracking_vk_menu_message():
   return 'Инфа по анализу аккаунтов вк...'
 
-def tracking_inst_menu_message():
-  return 'Инфа по анализу аккаунтов инсты...'
+def tracking_inst_menu_message(client, countNewEvents):
+    result = 'Сейчас отслеживаются аккаунты:\n'
+    result += str(getAccountsInst(client)) + '\n'
+    result += 'Новые события: ' + str(countNewEvents)
+    return result
 
 def tracking_inst_add_menu_message():
   return 'Чтобы добавить отслеживаемый аккаунт, введите команду: \n"/add_inst *ссылка на пользователя*"'
@@ -406,10 +418,10 @@ def tracking_inst_clear_menu_message():
          '(Отслеживание будет остановлено)'
 
 def tracking_inst_stop_menu_message():
-    return 'Чтобы остановить отслеживание аккаунтов, нажмите на кнопку "Остановить" или введите команду /stop_inst'
+    return 'Чтобы остановить отслеживание аккаунтов, нажмите на кнопку "Остановить"'
 
 def tracking_inst_start_menu_message():
-    return 'Чтобы начать отслеживание аккаунтов, нажмите на кнопку "Старт" или введите команду /start_inst'
+    return 'Чтобы начать отслеживание аккаунтов, нажмите на кнопку "Старт"'
 
 def tracking_vk_add_menu_message():
   return 'Чтобы добавить отслеживаемый аккаунт, введите ссылку на пользователя'

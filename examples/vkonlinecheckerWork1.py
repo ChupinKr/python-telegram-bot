@@ -34,6 +34,11 @@ from time import sleep
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
+#import psycopg2
+#conn = psycopg2.connect(dbname='database', user='db_user',
+#                        password='mypassword', host='localhost')
+#cursor = conn.cursor()
+
 # Enable logging
 
 logger = logging.getLogger(__name__)
@@ -51,15 +56,6 @@ queueAvito = queue.Queue()
 
 
 
-def getClientNumber(chatId):
-    for i in range(0, len(cls.clients)):
-        if chatId == cls.clients[i].chatId:
-            return i
-    return None
-
-def getHtml(url):
-    r = requests.get(url)
-    return r
 
 
 
@@ -128,7 +124,7 @@ def start_vk_command(update: Update, context: CallbackContext) -> None:
 def add_vk_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
     cls.checkClientExist(update.message.chat_id)
-    clientNum = getClientNumber(update.message.chat_id)
+    clientNum = cls.getClientNumber(update.message.chat_id)
     if 'https://vk.com/' in update.message.text:
         cls.clients[clientNum].addVkId(update.message.text.split(" ")[1])
         update.message.reply_text('Ссылка на пользователя добавлена в список для отслеживания')
@@ -196,25 +192,10 @@ def renewalStat(update: Update, statNum, client):
     if output != None:
         update.message.reply_text(output)
 
-def add_inst_command(update: Update, context: CallbackContext) -> None:
-    """Echo the user message. """
-    cls.checkClientExist(update.message.chat_id)
-    clientNum = getClientNumber(update.message.chat_id)
-
-    if 'instagram.com/' in update.message.text:
-        instUrl = update.message.text.split(" ")[1]
-        if update.message.text.split(" ")[1] not in cls.clients[clientNum].instUrls:
-            cls.clients[clientNum].addInst(instUrl)
-            update.message.reply_text('Ссылка на пользователя добавлена в список отслеживаемых')
-        else:
-            update.message.reply_text('В списке отслеживаемых уже есть данный пользователь')
-    else:
-        update.message.reply_text('Не могу понять. \nОтправьте полную ссылку на страницу пользователя в формате https://www.instagram.com/*ник пользователя*')
-
 
 def start_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
-    clientNum = getClientNumber(update.message.chat_id)
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     if not cls.clients[clientNum].instUrls:
         update.message.reply_text('Воспользуйтесь командой "/add_inst *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
     else:
@@ -224,13 +205,13 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
 
 def stop_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
-    clientNum = getClientNumber(update.message.chat_id)
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     update.message.reply_text('Отслеживание остановлено')
     cls.clients[clientNum].queueInst.put(0)
 
 def clear_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
-    clientNum = getClientNumber(update.message.chat_id)
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     cls.clients[clientNum].instUrls = []
     update.message.reply_text('Список отслеживаемых очищен')
     cls.clients[clientNum].queueInst.put(0)
@@ -269,7 +250,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
 
 def info_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
-    clientNum = getClientNumber(update.message.chat_id)
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     update.message.reply_text(cls.clients[clientNum].getClientInfo())
 
 
@@ -312,12 +293,11 @@ def main():
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_stop_menu, pattern='instStopTracking'))
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_start_menu, pattern='instStartTracking'))
 
-    dispatcher.add_handler(CommandHandler("add_inst", add_inst_command))
-    dispatcher.add_handler(CommandHandler("start_inst", start_inst_command))
+    updater.dispatcher.add_handler(CallbackQueryHandler(start_inst_command, pattern='startInst'))
     dispatcher.add_handler(CommandHandler("stop_inst", stop_inst_command))
     dispatcher.add_handler(CommandHandler("clear_inst", clear_inst_command))
 
-    dispatcher.add_handler(CommandHandler("start_vk", start_vk_command))
+    dispatcher.add_handler(CommandHandler("startVk", start_vk_command))
     dispatcher.add_handler(CommandHandler("add_vk", add_vk_command))
     dispatcher.add_handler(CommandHandler("stop_vk", stop_vk_command))
     dispatcher.add_handler(CommandHandler("clear_vk", clear_vk_command))

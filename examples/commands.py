@@ -4,10 +4,12 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import sqlite3
 from sqlite3 import Error
 
+import examples.classes as cls
+
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-import classes as cls
+
 
 def create_connection(path):
     connection = None
@@ -105,18 +107,18 @@ def getAccountsVk(client):
 
 
 
-def tracking_inst_menu(update,context):
+def tracking_inst_menu(update, context = None, additionalText = ""):
     cls.checkClientExist(update.callback_query.message.chat_id)
     client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
-    isVk = "vk.com" in client.getLastMess()
-
-    client.vkIds.append(client.getLastMess()) if isVk else client.instUrls.append(client.getLastMess())
 
     query = update.callback_query
-    query.answer()
+    try:
+        query.answer()
+    except:
+        pass
     query.edit_message_text(
-        text=tracking_inst_menu_message(client, 0),
-        reply_markup=tracking_inst_menu_keyboard()
+        text=additionalText + "\n" + tracking_inst_menu_message(client, client.countUnreadedChanges),
+        reply_markup=tracking_inst_menu_keyboard(client.countUnreadedChanges)
     )
 
 
@@ -312,14 +314,16 @@ def tracking_vk_start_menu_keyboard():
               [InlineKeyboardButton('<- Назад', callback_data='vkTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
-def tracking_inst_menu_keyboard():
-  keyboard = [[InlineKeyboardButton('Добавить', callback_data='instAddTracking')],
+def tracking_inst_menu_keyboard(countUnreadedActivity):
+    keyboard = [[InlineKeyboardButton('Добавить', callback_data='instAddTracking')],
             [InlineKeyboardButton('Удалить аккаунт', callback_data='instDelTracking')],
             [InlineKeyboardButton('Очистить все', callback_data='instClearTracking')],
             [InlineKeyboardButton('Остановить отслеживание', callback_data='instStopTracking')],
-            [InlineKeyboardButton('Начать отслеживание', callback_data='instStartTracking')],
-            [InlineKeyboardButton('<- Назад', callback_data='tracking')]]
-  return InlineKeyboardMarkup(keyboard)
+            [InlineKeyboardButton('Начать отслеживание', callback_data='instStartTracking')]]
+    if countUnreadedActivity > 0:
+        keyboard.append([InlineKeyboardButton('Показать последние активности', callback_data='showUnreadedActivities')])
+    keyboard.append([InlineKeyboardButton('<- Назад', callback_data='tracking')])
+    return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_add_menu_keyboard():
   keyboard = [[InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
@@ -330,12 +334,12 @@ def tracking_inst_del_menu_keyboard():
   return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_clear_menu_keyboard():
-  keyboard = [[InlineKeyboardButton('Очистить все', callback_data='clear_inst')],
+  keyboard = [[InlineKeyboardButton('Очистить все', callback_data='clearInst')],
               [InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_stop_menu_keyboard():
-  keyboard = [[InlineKeyboardButton('Остановить', callback_data='stop_inst')],
+  keyboard = [[InlineKeyboardButton('Остановить', callback_data='stopInst')],
               [InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
@@ -388,7 +392,7 @@ def main_menu_message():
     result += 'Пошарьте меню, может вам интересно, кто лайкает вашу половинку или друга...'
     return result
 
-  def profile_menu_message():
+def profile_menu_message():
   return 'Инфа о профиле...'
 
 def buySubscription_menu_message():
@@ -407,10 +411,10 @@ def tracking_inst_menu_message(client, countNewEvents):
     return result
 
 def tracking_inst_add_menu_message():
-  return 'Чтобы добавить отслеживаемый аккаунт, введите команду: \n"/add_inst *ссылка на пользователя*"'
+  return 'Чтобы добавить отслеживаемый аккаунт, введите ссылку на пользователя'
 
 def tracking_inst_del_menu_message():
-  return 'Чтобы удалить отслеживаемый аккаунт, введите команду: \n"/del_inst *ссылка на пользователя*"'
+  return 'Чтобы удалить отслеживаемый аккаунт, введите ссылку на пользователя'
 
 def tracking_inst_clear_menu_message():
   return 'Чтобы очистить список отслеживаемых аккаунтов, нажмите на кнопку "Очистить все" или введите команду /clear_inst' \

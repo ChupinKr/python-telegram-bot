@@ -27,6 +27,8 @@ class Client:
         self.vkIds = []  # устанавливаем отслеживаемые id vk
         self.instUrls = []  # устанавливаем отслеживаемые inst акки
 
+        self.countUnreadedChanges = 0 #сначала можно будет прочитать изменения, потом они подтираются, в случае чего можно их сохранить в файл
+
         self.queueVK = queue.Queue()
         self.queueInst = queue.Queue()
 
@@ -61,7 +63,10 @@ class Client:
         self.lastMess = mess
 
     def getLastMess(self):
-        return self.lastMess
+        if("instagram.com" in self.lastMess):
+            return self.lastMess.strip().split("?")[0]
+        else:
+            return self.lastMess
 
     #def addStatVk(self, userUrl):
     #    self.StatVk = StatVk(userUrl)
@@ -70,12 +75,13 @@ class StatInst:
     # конструктор
     def __init__(self, urlUser):
         self.urlUser = urlUser  # устанавливаем имя
-        self.userId = instApi.user_id_from_username(urlUser.split("instagram.com/")[1].split("/")[0])  # устанавливаем имя
-        self.followersIds = instApi.user_followers(self.userId)  # список подписчиков
-        self.followingsIds = instApi.user_following(self.userId)# список подписок
+        self.userId = instApi.user_id_from_username(urlUser.split("instagram.com/")[1].split("/")[0])  #устанавливаем имя
+        self.followersIds = instApi.user_followers(self.userId)  #список подписчиков
+        self.followingsIds = instApi.user_following(self.userId) #список подписок
         self.instLastPost = self.tryGetLastPost()
         self.instLastHist = self.tryGetLastHist()
-        self.lastChanges = self.LastChangesInst(self)
+        self.lastChanges = [] #тут должен быть массив
+        #self.lastChanges.append(self.LastChangesInst(self))
 
     def tryGetLastPost(self):
         resp = instApi.user_medias(self.userId,1)
@@ -198,5 +204,6 @@ def checkClientExist(chatId):
 
 def main():
     print()
+
 if __name__ == '__main__':
     main()

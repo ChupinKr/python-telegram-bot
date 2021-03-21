@@ -5,8 +5,8 @@
 
 #import gevent.monkey
 #import daemon
-import commands as comm
-from commands import cls
+import examples.commands as comm
+from examples.commands import cls
 import pytz
 from bs4 import BeautifulSoup
 from instagrapi import Client as ClientInstApi
@@ -172,34 +172,37 @@ def checkLastInstInfo(queueInst, update: Update, client: cls.Client):
             sleep(20)
 
 def renewalStat(update: Update, statNum, client):
-    output = ""
-    output = client.statInsts[statNum].lastChanges.setNewFollowers()
-    if output != None:
-        update.message.reply_text(output)
-    output = client.statInsts[statNum].lastChanges.setNewUnfollowers()
-    if output != None:
-        update.message.reply_text(output)
-    output = client.statInsts[statNum].lastChanges.setNewFollowings()
-    if output != None:
-        update.message.reply_text(output)
-    output = client.statInsts[statNum].lastChanges.setNewUnfollowings()
-    if output != None:
-        update.message.reply_text(output)
-    output = client.statInsts[statNum].lastChanges.setNewLastPost()
-    if output != None:
-        update.message.reply_text(output)
-    output = client.statInsts[statNum].lastChanges.setNewLastHistory()
-    if output != None:
-        update.message.reply_text(output)
+    countChanges = 0
+    client.statInsts[statNum].lastChanges.append(client.statInsts[statNum].LastChangesInst(client.statInsts[statNum]))
+
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewFollowers() != None:
+        countChanges += 1
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewUnfollowers() != None:
+        countChanges += 1
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewFollowings() != None:
+        countChanges += 1
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewUnfollowings() != None:
+        countChanges += 1
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewLastPost() != None:
+        countChanges += 1
+    if client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1].setNewLastHistory() != None:
+        countChanges += 1
+    if countChanges < 1:
+        client.statInsts[statNum].lastChanges.remove(client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1])
+    client.countUnreadedChanges += countChanges
+    if countChanges > 0:
+        comm.tracking_inst_menu(update, None, "Отслеживание идет полным ходом..")
+
+
 
 
 def start_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     if not cls.clients[clientNum].instUrls:
-        update.message.reply_text('Воспользуйтесь командой "/add_inst *ссылка на пользователя*"  для добавления отслеживаемых аккаунтов')
+        comm.tracking_inst_add_menu(update, context)
     else:
-        update.message.reply_text('Запущено отслеживание выбранных аккаунтов, ожидаем изменений...')
+        comm.tracking_inst_menu(update, context, 'Запущено отслеживание выбранных аккаунтов, ожидаем изменений...')
         threading.Thread(target=checkLastInstInfo, args=[cls.clients[clientNum].queueInst, update, cls.clients[clientNum]]).start()
         cls.clients[clientNum].queueInst.put(1)
 
@@ -293,9 +296,12 @@ def main():
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_stop_menu, pattern='instStopTracking'))
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_start_menu, pattern='instStartTracking'))
 
+    dispatcher.add_handler(CommandHandler("menu", comm.start))
+
     updater.dispatcher.add_handler(CallbackQueryHandler(start_inst_command, pattern='startInst'))
-    dispatcher.add_handler(CommandHandler("stop_inst", stop_inst_command))
-    dispatcher.add_handler(CommandHandler("clear_inst", clear_inst_command))
+    dispatcher.add_handler(CommandHandler("stopInst", stop_inst_command))
+    dispatcher.add_handler(CommandHandler("clearInst", clear_inst_command))
+
 
     dispatcher.add_handler(CommandHandler("startVk", start_vk_command))
     dispatcher.add_handler(CommandHandler("add_vk", add_vk_command))

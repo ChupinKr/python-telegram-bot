@@ -115,10 +115,12 @@ def checkOnlineVk(queueVK, update: Update):
 
 def start_vk_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     if not vkIds:
         update.message.reply_text('Воспользуйтесь командой /add_vk для добавления отслеживаемых аккаунтов')
     else:
         threading.Thread(target=checkOnlineVk, args=[queueVK, update]).start()
+        cls.clients[clientNum].isCheckingVk = True
         queueVK.put(1)
 
 def add_vk_command(update: Update, context: CallbackContext) -> None:
@@ -131,6 +133,8 @@ def add_vk_command(update: Update, context: CallbackContext) -> None:
 
 def stop_vk_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
+    clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
+    cls.clients[clientNum].isCheckingVk = False
     queueVK.put(0)
 
 def clear_vk_command(update: Update, context: CallbackContext) -> None:
@@ -189,7 +193,7 @@ def renewalStat(update: Update, statNum, client):
         countChanges += 1
     if countChanges < 1:
         client.statInsts[statNum].lastChanges.remove(client.statInsts[statNum].lastChanges[len(client.statInsts[statNum].lastChanges) - 1])
-    client.countUnreadedChanges += countChanges
+    client.statInsts[statNum].countUnreadedChanges += countChanges
     if countChanges > 0:
         comm.tracking_inst_menu(update, None, "Отслеживание идет полным ходом..")
 
@@ -202,6 +206,7 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
     if not cls.clients[clientNum].instUrls:
         comm.tracking_inst_add_menu(update, context)
     else:
+        cls.clients[clientNum].isCheckingInst = True
         comm.tracking_inst_menu(update, context, 'Запущено отслеживание выбранных аккаунтов, ожидаем изменений...')
         threading.Thread(target=checkLastInstInfo, args=[cls.clients[clientNum].queueInst, update, cls.clients[clientNum]]).start()
         cls.clients[clientNum].queueInst.put(1)
@@ -209,15 +214,18 @@ def start_inst_command(update: Update, context: CallbackContext) -> None:
 def stop_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
-    update.message.reply_text('Отслеживание остановлено')
+    cls.clients[clientNum].isCheckingInst = False
     cls.clients[clientNum].queueInst.put(0)
+    comm.tracking_inst_menu(update, context, 'Отслеживание остановлено')
 
 def clear_inst_command(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     cls.clients[clientNum].instUrls = []
-    update.message.reply_text('Список отслеживаемых очищен')
+    cls.clients[clientNum].isCheckingInst = False
     cls.clients[clientNum].queueInst.put(0)
+    comm.tracking_inst_menu(update, context,'Список отслеживаемых очищен')
+
 
 
 
@@ -296,11 +304,37 @@ def main():
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_stop_menu, pattern='instStopTracking'))
     updater.dispatcher.add_handler(CallbackQueryHandler(comm.tracking_inst_start_menu, pattern='instStartTracking'))
 
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.show_unreaded_activities_menu, pattern='showUnreadedActivities'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.show_unreaded_activities_inst_menu, pattern='showUnreadedInst'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.show_unreaded_activities_vk_menu, pattern='showUnreadedVk'))
+
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk0'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk1'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk2'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk3'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk4'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk5'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk6'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk7'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk8'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_vk_menu, pattern='userCountUnreadedVk9'))
+
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst0'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst1'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst2'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst3'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst4'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst5'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst6'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst7'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst8'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(comm.user_count_inreaded_inst_menu, pattern='userCountUnreadedInst9'))
+
     dispatcher.add_handler(CommandHandler("menu", comm.start))
 
     updater.dispatcher.add_handler(CallbackQueryHandler(start_inst_command, pattern='startInst'))
-    dispatcher.add_handler(CommandHandler("stopInst", stop_inst_command))
-    dispatcher.add_handler(CommandHandler("clearInst", clear_inst_command))
+    updater.dispatcher.add_handler(CallbackQueryHandler(stop_inst_command, pattern='stopInst'))
+    updater.dispatcher.add_handler(CallbackQueryHandler(clear_inst_command, pattern='clearInst'))
 
 
     dispatcher.add_handler(CommandHandler("startVk", start_vk_command))

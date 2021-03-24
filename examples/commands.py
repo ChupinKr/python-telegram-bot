@@ -111,19 +111,82 @@ def tracking_inst_menu(update, context = None, additionalText = ""):
     cls.checkClientExist(update.callback_query.message.chat_id)
     client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
 
+    if(not client.isCheckingInst):
+        additionalText = "Отслеживание уже остановлены, но некоторые результаты уже пришли.."
+
     query = update.callback_query
+
+    countUnreadedChanges = 0
+    for stat in client.statInsts:
+        countUnreadedChanges += stat.countUnreadedChanges
     try:
         query.answer()
     except:
         pass
     query.edit_message_text(
-        text=additionalText + "\n" + tracking_inst_menu_message(client, client.countUnreadedChanges),
-        reply_markup=tracking_inst_menu_keyboard(client.countUnreadedChanges)
+        text=additionalText + "\n" + tracking_inst_menu_message(client, countUnreadedChanges),
+        reply_markup=tracking_inst_menu_keyboard(countUnreadedChanges, client)
     )
+
+def show_unreaded_activities_menu(update,context):
+  query = update.callback_query
+  query.answer()
+  query.edit_message_text(
+                        text=show_unreaded_activities_message(),
+                        reply_markup=show_unreaded_activities_keyboard())
+
+def show_unreaded_activities_inst_menu(update,context):
+  query = update.callback_query
+  try:
+      query.answer()
+  except:
+      pass
+  query.edit_message_text(
+                        text=show_unreaded_activities_inst_menu_message(),
+                        reply_markup=show_unreaded_activities_inst_menu_keyboard(update)
+  )
+
+def show_unreaded_activities_vk_menu(update,context):
+  query = update.callback_query
+  try:
+      query.answer()
+  except:
+      pass
+  query.edit_message_text(
+                        text=show_unreaded_activities_vk_menu_message(),
+                        reply_markup=show_unreaded_activities_vk_menu_keyboard(update))
+
+def user_count_inreaded_inst_menu(update,context):
+    cls.checkClientExist(update.callback_query.message.chat_id)
+    client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
+    userUlr = update.callback_query.data.split(" ")[0]
+    stat = cls.getStatNumByUserUlr(client, userUlr)
+    textResult = cls.getLastChangesByStat(stat)
+    txtfile = 'txtfile.txt'
+    with open(txtfile, 'w') as file:
+        file.write(textResult)
+    #txtfile.close()
+    query = update.callback_query
+    try:
+        query.answer()
+    except:
+        pass
+    context.bot.sendDocument(txtfile)
+    #update.sendDocument(textResult)
+    query.edit_message_text(
+                          text=user_count_inreaded_inst_menu_message(textResult),
+                          reply_markup=user_count_inreaded_inst_menu_keyboard())
+
+def user_count_inreaded_vk_menu(update,context):
+  query = update.callback_query
+  query.answer()
+  query.edit_message_text(
+                        text=user_count_inreaded_vk_menu_message(),
+                        reply_markup=user_count_inreaded_vk_menu_keyboard(update))
 
 
 def start(update, context):
-  update.message.reply_text(main_menu_message(),
+  update.message.reply_text(text=main_menu_message(),
                             reply_markup=main_menu_keyboard())
 
 def main_menu(update,context):
@@ -155,11 +218,13 @@ def tracking_menu(update,context):
                         reply_markup=tracking_menu_keyboard())
 
 def tracking_vk_menu(update,context):
-  query = update.callback_query
-  query.answer()
-  query.edit_message_text(
+    cls.checkClientExist(update.callback_query.message.chat_id)
+    client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(
                         text=tracking_vk_menu_message(),
-                        reply_markup=tracking_vk_menu_keyboard())
+                        reply_markup=tracking_vk_menu_keyboard(client))
 
 def tracking_vk_add_menu(update,context):
   query = update.callback_query
@@ -264,6 +329,26 @@ def main_menu_keyboard():
               [InlineKeyboardButton('Купить подписку', callback_data='buySubscription')]]
   return InlineKeyboardMarkup(keyboard)
 
+def show_unreaded_activities_vk_menu_keyboard(update):
+    keyboard = []
+    stats = cls.getTargetNameAndCountUnreaded(update, True)
+    i = 0
+    for str in stats:
+        keyboard.append([InlineKeyboardButton(str, callback_data='userCountUnreadedVk' + str(i))])
+        i += 1
+    keyboard.append([InlineKeyboardButton('<- Назад', callback_data='showUnreadedActivities')])
+    return InlineKeyboardMarkup(keyboard)
+
+def show_unreaded_activities_inst_menu_keyboard(update):
+    keyboard = []
+    stats = cls.getTargetNameAndCountUnreaded(update, False)
+    i = 0
+    for button in stats:
+        keyboard.append([InlineKeyboardButton(button, callback_data='userCountUnreadedInst' + str(i))])
+        i += 1
+    keyboard.append([InlineKeyboardButton('<- Назад', callback_data='showUnreadedActivities')])
+    return InlineKeyboardMarkup(keyboard)
+
 def useCommands_menu_keyboard():
   keyboard = [[InlineKeyboardButton('Анализ страницы', callback_data='add_analysis')],
               [InlineKeyboardButton('Добавить в отслеживаемые', callback_data='add_tracking')],
@@ -282,14 +367,17 @@ def tracking_menu_keyboard():
             [InlineKeyboardButton('<- Назад', callback_data='main')]]
   return InlineKeyboardMarkup(keyboard)
 
-def tracking_vk_menu_keyboard():
-  keyboard = [[InlineKeyboardButton('Добавить аккаунт', callback_data='vkAddTracking')],
-            [InlineKeyboardButton('Удалить аккаунт', callback_data='vkDelTracking')],
-            [InlineKeyboardButton('Очистить все', callback_data='vkClearTracking')],
-            [InlineKeyboardButton('Остановить отслеживание', callback_data='vkStopTracking')],
-            [InlineKeyboardButton('Начать отслеживание', callback_data='vkStartTracking')],
-            [InlineKeyboardButton('<- Назад', callback_data='tracking')]]
-  return InlineKeyboardMarkup(keyboard)
+def tracking_vk_menu_keyboard(client):
+    keyboard = []
+    if(not client.isCheckingVk):
+            keyboard = [[InlineKeyboardButton('Начать отслеживание', callback_data='vkStartTracking')],
+                            [InlineKeyboardButton('Добавить аккаунт', callback_data='vkAddTracking')],
+                            [InlineKeyboardButton('Удалить аккаунт', callback_data='vkDelTracking')],
+                            [InlineKeyboardButton('Очистить все', callback_data='vkClearTracking')]]
+    if (client.isCheckingVk):
+            keyboard.append([InlineKeyboardButton('Остановить отслеживание', callback_data='vkStopTracking')])
+    keyboard.append([InlineKeyboardButton('<- Назад', callback_data='tracking')])
+    return InlineKeyboardMarkup(keyboard)
 
 def tracking_vk_add_menu_keyboard():
   keyboard = [[InlineKeyboardButton('<- Назад', callback_data='vkTracking')]]
@@ -314,16 +402,23 @@ def tracking_vk_start_menu_keyboard():
               [InlineKeyboardButton('<- Назад', callback_data='vkTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
-def tracking_inst_menu_keyboard(countUnreadedActivity):
-    keyboard = [[InlineKeyboardButton('Добавить', callback_data='instAddTracking')],
-            [InlineKeyboardButton('Удалить аккаунт', callback_data='instDelTracking')],
-            [InlineKeyboardButton('Очистить все', callback_data='instClearTracking')],
-            [InlineKeyboardButton('Остановить отслеживание', callback_data='instStopTracking')],
-            [InlineKeyboardButton('Начать отслеживание', callback_data='instStartTracking')]]
+def tracking_inst_menu_keyboard(countUnreadedActivity, client):
+    keyboard = []
+    if(not client.isCheckingInst):
+            keyboard = [[InlineKeyboardButton('Начать отслеживание', callback_data='instStartTracking')],
+                            [InlineKeyboardButton('Добавить аккаунт', callback_data='instAddTracking')],
+                            [InlineKeyboardButton('Удалить аккаунт', callback_data='instDelTracking')],
+                            [InlineKeyboardButton('Очистить все', callback_data='instClearTracking')]]
+    if (client.isCheckingInst):
+        keyboard.append([InlineKeyboardButton('Остановить отслеживание', callback_data='instStopTracking')])
     if countUnreadedActivity > 0:
         keyboard.append([InlineKeyboardButton('Показать последние активности', callback_data='showUnreadedActivities')])
     keyboard.append([InlineKeyboardButton('<- Назад', callback_data='tracking')])
     return InlineKeyboardMarkup(keyboard)
+
+def user_count_inreaded_inst_menu_keyboard():
+  keyboard = [[InlineKeyboardButton('<- Назад', callback_data='showUnreadedInst')]]
+  return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_add_menu_keyboard():
   keyboard = [[InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
@@ -344,7 +439,7 @@ def tracking_inst_stop_menu_keyboard():
   return InlineKeyboardMarkup(keyboard)
 
 def tracking_inst_start_menu_keyboard():
-  keyboard = [[InlineKeyboardButton('Старт', callback_data='start_inst')],
+  keyboard = [[InlineKeyboardButton('Старт', callback_data='startInst')],
               [InlineKeyboardButton('<- Назад', callback_data='instTracking')]]
   return InlineKeyboardMarkup(keyboard)
 
@@ -352,6 +447,12 @@ def analysis_menu_keyboard():
   keyboard = [[InlineKeyboardButton('VK', callback_data='vkAnalysis')],
             [InlineKeyboardButton('Instagram', callback_data='instAnalysis')],
             [InlineKeyboardButton('<- Назад', callback_data='main')]]
+  return InlineKeyboardMarkup(keyboard)
+
+def show_unreaded_activities_keyboard():
+  keyboard = [[InlineKeyboardButton('VK', callback_data='showUnreadedVk')],
+            [InlineKeyboardButton('Instagram', callback_data='showUnreadedInst')],
+            [InlineKeyboardButton('<- Назад', callback_data='tracking')]]
   return InlineKeyboardMarkup(keyboard)
 
 def analysis_vk_menu_keyboard():
@@ -405,7 +506,7 @@ def tracking_vk_menu_message():
   return 'Инфа по анализу аккаунтов вк...'
 
 def tracking_inst_menu_message(client, countNewEvents):
-    result = 'Сейчас отслеживаются аккаунты:\n'
+    result = 'Список аккаунтов:\n'
     result += str(getAccountsInst(client)) + '\n'
     result += 'Новые события: ' + str(countNewEvents)
     return result
@@ -452,6 +553,18 @@ def analysis_vk_menu_message():
 
 def analysis_inst_menu_message():
   return 'Инфа по анализу аккаунтов инсты...'
+
+def show_unreaded_activities_message():
+  return 'По какой из соц. сетей показать активность пользователей?'
+
+def show_unreaded_activities_vk_menu_message():
+  return 'По какому пользователю показать последние активности?'
+
+def show_unreaded_activities_inst_menu_message():
+  return 'По какому пользователю показать последние активности?'
+
+def user_count_inreaded_inst_menu_message(userUrl, lastchanges):
+  return 'Последние события пользователя ' + userUrl + ' :\n' + lastchanges
 
 
 def main():

@@ -5,7 +5,7 @@ from instagrapi import types as typesApi
 from datetime import datetime
 
 instApi = ClientInstApi()
-instApi.login("dmitry.di83", "testdima0001")
+instApi.login("chupin.kr", "tomo4kazayka1")
 
 clients = []
 
@@ -20,6 +20,45 @@ def getHtml(url):
     r = requests.get(url)
     return r
 
+def getTargetNameAndCountUnreaded(update, isVk):
+    result = []
+    clientNum = getClientNumber(update.callback_query.message.chat_id)
+    if (isVk):
+        for stat in clients[clientNum].statVks:
+            #if(stat.countUnreadedChanges > 0):
+                result.append(stat.urlUser + " - " + str(stat.countUnreadedChanges))
+    else:
+        for stat in clients[clientNum].statInsts:
+            #if(stat.countUnreadedChanges > 0):
+                result.append(stat.urlUser + " - " + str(stat.countUnreadedChanges))
+    return result
+
+def getStatNumByUserUlr(client, userNum):
+    num = 0
+    if("Vk" in userNum):
+        num = int(userNum.split("userCountUnreadedVk")[1])
+        return client.statVks[num]
+    else:
+        num = int(userNum.split("userCountUnreadedInst")[1])
+        return client.statInsts[num]
+
+def getLastChangesByStat(stat):
+    result = ""
+    for lastChange in stat.lastChanges:
+        if lastChange.lastFollowers != None:
+            result += "Последние подписчики: " + "\n".join(lastChange.lastFollowers)
+        if lastChange.lastUnfollowers != None:
+            result += "\nПоследние отписавшиеся: " + "\n".join(lastChange.lastUnfollowers)
+        if lastChange.lastFollowings != None:
+            result += "\nПоследние подписки: " + "\n".join(lastChange.lastFollowings)
+        if lastChange.lastUnfollowings != None:
+            result += "\nПоследние отписки: " + "\n".join(lastChange.lastUnfollowings)
+        if lastChange.lastPhotoDate != None:
+            result += "\nПоследнее фото: " + lastChange.lastPhotoDate.post + " время публикации: " + lastChange.lastPhotoDate.time
+        if lastChange.lastStoryDate != None:
+            result += "\nПоследняя история: " + lastChange.lastStoryDate.post + " время публикации: " + lastChange.lastStoryDate.time
+    return result
+
 class Client:
     # конструктор
     def __init__(self, chatId):
@@ -27,10 +66,11 @@ class Client:
         self.vkIds = []  # устанавливаем отслеживаемые id vk
         self.instUrls = []  # устанавливаем отслеживаемые inst акки
 
-        self.countUnreadedChanges = 0 #сначала можно будет прочитать изменения, потом они подтираются, в случае чего можно их сохранить в файл
-
         self.queueVK = queue.Queue()
         self.queueInst = queue.Queue()
+
+        self.isCheckingVk = False
+        self.isCheckingInst = False
 
         self.statInsts = []
         self.statVks = []
@@ -83,6 +123,8 @@ class StatInst:
         self.lastChanges = [] #тут должен быть массив
         #self.lastChanges.append(self.LastChangesInst(self))
 
+        self.countUnreadedChanges = 0  # сначала можно будет прочитать изменения, потом они подтираются, в случае чего можно их сохранить в файл
+
     def tryGetLastPost(self):
         resp = instApi.user_medias(self.userId,1)
         if len(resp) > 0:
@@ -127,65 +169,65 @@ class StatInst:
         # конструктор
         def __init__(self, parent):
             self.parent = parent
-            self.lastFollowers = []
-            self.lastUnfollowers = []
-            self.lastFollowings = []
-            self.lasUnfollowings = []
-            self.lastPhotoDate = []
-            self.lastStoryDate = []
+            self.lastFollowers = None
+            self.lastUnfollowers = None
+            self.lastFollowings = None
+            self.lastUnfollowings = None
+            self.lastPhotoDate = None
+            self.lastStoryDate = None
 
         def setNewFollowers(self):
             responce = instApi.user_followers(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowersIds()
             if list(set(responce) - set(oldIds)) != []:
-                self.lastFollowers.append(list(set(responce) - set(oldIds)))
+                self.lastFollowers = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
                 self.parent.setFollowersIds(responce)
-                listNewFollowersNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
-                return "На " + self.parent.urlUser + " подписались: \n" + '\n'.join(listNewFollowersNicks)
+                #listNewFollowersNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
+                return self.lastFollowers
 
         def setNewUnfollowers(self):
             responce = instApi.user_followers(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowersIds()
             if list(set(oldIds) - set(responce)) != []:
-                self.lastUnfollowers.append(list(set(oldIds) - set(responce)))
+                self.lastUnfollowers = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
                 self.parent.setFollowersIds(responce)
-                listNewUnfollowersNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
-                return "От " + self.parent.urlUser + " отписались: \n" + '\n'.join(listNewUnfollowersNicks)
+                #listNewUnfollowersNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
+                return self.lastUnfollowers
 
 
         def setNewFollowings(self):
             responce = instApi.user_following(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowingsIds()
             if list(set(responce) - set(oldIds)) != []:
-                self.lastFollowings.append(list(set(responce) - set(oldIds)))
+                self.lastFollowings = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
                 self.parent.setFollowingsIds(responce)
-                listNewFollowingsNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
-                return self.parent.urlUser + " подписался на: \n" + '\n'.join(listNewFollowingsNicks)
+                #listNewFollowingsNicks = self.listUserIdsToUrls(list(set(responce) - set(oldIds)))
+                return self.lastFollowings
 
         def setNewUnfollowings(self):
             responce = instApi.user_following(self.parent.getUserId(), 0, False)
             oldIds = self.parent.getFollowingsIds()
             if list(set(oldIds) - set(responce)) != []:
-                self.lasUnfollowings.append(list(set(oldIds) - set(responce)))
+                self.lastUnfollowings = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
                 self.parent.setFollowingsIds(responce)
-                listNewUnfollowingsNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
-                return self.parent.urlUser + " отписался от : \n" + '\n'.join(listNewUnfollowingsNicks)
+                #listNewUnfollowingsNicks = self.listUserIdsToUrls(list(set(oldIds) - set(responce)))
+                return self.lastUnfollowings
 
         def setNewLastPost(self):
             responce = self.parent.tryGetLastPost()
             oldLastPost = self.parent.getInstLastPost()
             if responce != oldLastPost:
-                self.lastPhotoDate.append({"post" : responce.code, "time": responce.taken_at})
+                self.lastPhotoDate = ({"post" : "https://www.instagram.com/p/" + responce.code, "time": responce.taken_at})
                 self.parent.setInstLastPostId(responce.code)
-                return "Пользователь " + self.parent.urlUser + " добавил пост: \n" + "https://www.instagram.com/p/" + responce
+                return self.lastPhotoDate
 
         def setNewLastHistory(self):
             responce = self.parent.tryGetLastHist()
             oldLastPost = self.parent.getInstLastHist()
             if responce != oldLastPost:
-                self.lastStoryDate.append({"post": responce.code, "time": responce.taken_at})
+                self.lastStoryDate = ({"post": responce.code, "time": responce.taken_at})
                 self.parent.setInstLastPostId(responce.code)
-                return "Пользователь " + self.parent.urlUser + " добавил новую историю: \n"
+                return self.lastStoryDate
 
         def listUserIdsToUrls(self, listIds):
             listResult = []

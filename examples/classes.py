@@ -1,4 +1,6 @@
 import queue
+from asyncio import sleep
+
 import requests
 from instagrapi import Client as ClientInstApi
 from instagrapi import types as typesApi
@@ -6,8 +8,11 @@ from datetime import datetime
 
 instApi = ClientInstApi()
 instApi.login("chupin.kr", "tomo4kazayka1")
-
+from telegram import Update
 clients = []
+
+
+
 
 
 def getClientNumber(chatId):
@@ -48,15 +53,15 @@ def getLastChangesByStat(stat):
         if lastChange.lastFollowers != None:
             result += "Последние подписчики: " + "\n".join(lastChange.lastFollowers)
         if lastChange.lastUnfollowers != None:
-            result += "\nПоследние отписавшиеся: " + "\n".join(lastChange.lastUnfollowers)
+            result += "\n\nПоследние отписавшиеся: " + "\n".join(lastChange.lastUnfollowers)
         if lastChange.lastFollowings != None:
-            result += "\nПоследние подписки: " + "\n".join(lastChange.lastFollowings)
+            result += "\n\nПоследние подписки: " + "\n".join(lastChange.lastFollowings)
         if lastChange.lastUnfollowings != None:
-            result += "\nПоследние отписки: " + "\n".join(lastChange.lastUnfollowings)
+            result += "\n\nПоследние отписки: " + "\n".join(lastChange.lastUnfollowings)
         if lastChange.lastPhotoDate != None:
-            result += "\nПоследнее фото: " + lastChange.lastPhotoDate.post + " время публикации: " + lastChange.lastPhotoDate.time
+            result += "\n\nПоследнее фото: " + lastChange.lastPhotoDate.post + " время публикации: " + lastChange.lastPhotoDate.time
         if lastChange.lastStoryDate != None:
-            result += "\nПоследняя история: " + lastChange.lastStoryDate.post + " время публикации: " + lastChange.lastStoryDate.time
+            result += "\n\nПоследняя история: " + lastChange.lastStoryDate.post + " время публикации: " + lastChange.lastStoryDate.time
     return result
 
 class Client:
@@ -243,6 +248,9 @@ def checkClientExist(chatId):
             return True
     clients.append(Client(chatId))
     return False
+
+
+
 
 def main():
     print()

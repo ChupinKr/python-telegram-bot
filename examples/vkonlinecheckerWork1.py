@@ -196,6 +196,7 @@ def renewalStat(update: Update, statNum, client):
     client.statInsts[statNum].countUnreadedChanges += countChanges
     if countChanges > 0:
         comm.tracking_inst_menu(update, None, "Отслеживание идет полным ходом..")
+        comm.info_message(update, client.statInsts[statNum].countUnreadedChanges)
 
 
 
@@ -263,10 +264,6 @@ def info_command(update: Update, context: CallbackContext) -> None:
     """Echo the user message. """
     clientNum = cls.getClientNumber(update.callback_query.message.chat_id)
     update.message.reply_text(cls.clients[clientNum].getClientInfo())
-
-
-
-
 
 
 

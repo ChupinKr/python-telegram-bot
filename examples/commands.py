@@ -1,5 +1,8 @@
+import threading
+
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import os
 
 import sqlite3
 from sqlite3 import Error
@@ -8,6 +11,9 @@ import examples.classes as cls
 
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+
+
+
 
 
 
@@ -22,6 +28,22 @@ def create_connection(path):
     return connection
 
 ############################### Bot ############################################
+def info_message(update, countUnreaded):
+    cls.checkClientExist(update.callback_query.message.chat_id)
+    client = cls.clients[cls.getClientNumber(update.callback_query.message.chat_id)]
+
+    query = update.callback_query
+    try:
+        query.answer()
+    except:
+        pass
+    query.bot.sendMessage(
+        chat_id=query.message.chat_id,
+        text="У вас " + str(countUnreaded) + " непрочитанных активностей по отслеживаемым пользователям",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('Отслеживание', callback_data='tracking')]]))
+
+
+
 def useCommands(update: Update, context: CallbackContext) -> None:
     """Echo the user message."""
     cls.checkClientExist(update.message.chat_id)
@@ -162,19 +184,24 @@ def user_count_inreaded_inst_menu(update,context):
     userUlr = update.callback_query.data.split(" ")[0]
     stat = cls.getStatNumByUserUlr(client, userUlr)
     textResult = cls.getLastChangesByStat(stat)
-    txtfile = 'txtfile.txt'
-    with open(txtfile, 'w') as file:
-        file.write(textResult)
     #txtfile.close()
     query = update.callback_query
     try:
         query.answer()
     except:
         pass
-    context.bot.sendDocument(txtfile)
-    #update.sendDocument(textResult)
+    f = open(stat.userId + ".txt", "w")
+    f.write(textResult)
+    f.close()
+
+    context.bot.sendDocument(chat_id=query.message.chat_id, caption='Можете скачать файл с последними изменениями \nКоманда /menu для возвращения в главное меню', document=open(stat.userId + ".txt", 'rb'))
+    os.remove(userUlr + ".txt")
+
+    stat.lastChanges = []
+    stat.countUnreadedChanges = 0
+
     query.edit_message_text(
-                          text=user_count_inreaded_inst_menu_message(textResult),
+                          text=user_count_inreaded_inst_menu_message(userUlr, textResult),
                           reply_markup=user_count_inreaded_inst_menu_keyboard())
 
 def user_count_inreaded_vk_menu(update,context):
@@ -186,7 +213,8 @@ def user_count_inreaded_vk_menu(update,context):
 
 
 def start(update, context):
-  update.message.reply_text(text=main_menu_message(),
+    info_message(update, 15)
+    update.message.reply_text(text=main_menu_message(),
                             reply_markup=main_menu_keyboard())
 
 def main_menu(update,context):
@@ -211,9 +239,9 @@ def buySubscription_menu(update,context):
                         reply_markup=buySubscription_menu_keyboard())
 
 def tracking_menu(update,context):
-  query = update.callback_query
-  query.answer()
-  query.edit_message_text(
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text(
                         text=tracking_menu_message(),
                         reply_markup=tracking_menu_keyboard())
 
